@@ -1,0 +1,15 @@
+{
+  "name": "learn-crypto",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "inaridiy <inainainariinainari@gmail.com>",
+  "license": "MIT",
+  "packageManager": "yarn@3.5.0",
+  "devDependencies": {
+    "@tsconfig/node18": "^1.0.1",
+    "@types/node": "^18.15.11",
+    "prettier": "^2.8.7",
+    "tsx": "^3.12.6",
+    "typescript": "^5.0.4"
+  }
+}
