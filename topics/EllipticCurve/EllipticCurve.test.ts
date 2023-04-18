@@ -7,6 +7,5 @@ it("Test Curve", () => {
 
   expect(curve.isOnCurve(curve.add(point1, point1))).toBe(true);
   expect(curve.isOnCurve(curve.add(point1, point1, point1))).toBe(true);
-  console.log(curve.multiply(point1, 3n));
   expect(curve.add(point1, point1, point1)).toEqual(curve.multiply(point1, 3n));
 });
