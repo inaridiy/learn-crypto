@@ -7,7 +7,6 @@ export class EllipticCurve {
   private a: bigint;
   private b: bigint;
   private p: bigint;
-  private _modCache: Map<bigint, bigint> = new Map();
   private _inverseCache: Map<bigint, bigint> = new Map();
 
   static BIG_PRIME = 2n ** 256n - 2n ** 32n - 977n;
@@ -21,8 +20,7 @@ export class EllipticCurve {
 
   //負の値の剰余を正の値にする
   private mod(n: bigint): bigint {
-    if (this._modCache.has(n)) return this._modCache.get(n)!;
-    else return ((n % this.p) + this.p) % this.p;
+    return ((n % this.p) + this.p) % this.p;
   }
 
   private inverse(n: bigint): bigint {
@@ -35,6 +33,7 @@ export class EllipticCurve {
     return result;
   }
 
+  //拡張ユークリッドの互除法らしい。何言ってるかわからん
   private extendedGCD(a: bigint, b: bigint): [bigint, bigint, bigint] {
     let x = 0n;
     let y = 1n;
