@@ -4,5 +4,9 @@
  * @param p
  */
 export const random = (p: bigint) => {
-  return BigInt((Math.random() * Number(p)) | 0);
+  const randomHexes = Array(5)
+    .fill("0")
+    .map(() => Math.random().toString(16).slice(2))
+    .join("");
+  return BigInt("0x" + randomHexes) % p;
 };

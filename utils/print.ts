@@ -6,7 +6,9 @@ const printRecordNested = (title: string, x: Record<string, any>, depth: number)
 
   for (const key in x) {
     if (typeof x[key] === "object") {
-      printRecordNested(key, x[key], depth + 1);
+      for (const key2 in x[key]) {
+        console.log(`${key}.${key2}: ${x[key][key2]}`);
+      }
     } else {
       console.log(`${key}: ${x[key]}`);
     }
