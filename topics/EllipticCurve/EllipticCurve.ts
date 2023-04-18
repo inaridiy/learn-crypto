@@ -51,9 +51,9 @@ export class EllipticCurve {
   }
 
   private _add(p1: Point, p2: Point): Point {
-    if (!this.isOnCurve(p1) || !this.isOnCurve(p2)) throw new Error("Points must be on curve");
     if (p1.x === 0n && p1.y === 0n) return p2;
     if (p2.x === 0n && p2.y === 0n) return p1;
+    if (!this.isOnCurve(p1) || !this.isOnCurve(p2)) throw new Error("Points must be on curve");
     if (p1.x > p2.x) [p1, p2] = [p2, p1]; //なんかこうしないと通らない
 
     let x3: bigint, y3: bigint;
@@ -79,5 +79,18 @@ export class EllipticCurve {
       point = this._add(point, points[i]);
     }
     return point;
+  }
+
+  public multiply(point: Point, n: bigint): Point {
+    if (n < 0n) throw new Error("n must be positive");
+    if (n === 0n) return EllipticCurve.ZERO_POINT;
+
+    let result = EllipticCurve.ZERO_POINT;
+    while (n > 0n) {
+      if (n % 2n === 1n) result = this._add(result, point);
+      point = this._add(point, point);
+      n >>= 1n;
+    }
+    return result;
   }
 }
