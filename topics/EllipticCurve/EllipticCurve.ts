@@ -1,15 +1,16 @@
+import { Finite } from "./Finite";
 import { extendedGCD } from "./extendedGCD";
 
-type Point = Readonly<{
+export type Point = Readonly<{
   x: bigint;
   y: bigint;
 }>;
 
 export class EllipticCurve {
-  private a: bigint;
-  private b: bigint;
-  private p: bigint;
-  private _inverseCache: Map<bigint, bigint> = new Map();
+  readonly a: bigint;
+  readonly b: bigint;
+  readonly p: bigint;
+  readonly fp: Finite;
   private _onCurveCache: Map<bigint, boolean> = new Map();
 
   static BIG_PRIME = 2n ** 256n - 2n ** 32n - 977n;
@@ -25,26 +26,13 @@ export class EllipticCurve {
     this.a = a;
     this.b = b;
     this.p = p;
-  }
-
-  private mod(x: bigint): bigint {
-    const r = x % this.p;
-    return r < 0n ? r + this.p : r;
-  }
-
-  private inverse(n: bigint): bigint {
-    if (this._inverseCache.has(n)) return this._inverseCache.get(n)!;
-    const [gcd, x] = extendedGCD(n, this.p);
-    if (gcd !== 1n) throw new Error("No inverse");
-    const result = this.mod(x);
-    this._inverseCache.set(x, result);
-    return result;
+    this.fp = new Finite(p);
   }
 
   public isOnCurve(point: Point): boolean {
     if (this._onCurveCache.has(point.x)) return this._onCurveCache.get(point.x)!;
-    const left = this.mod(point.y ** 2n);
-    const right = this.mod(point.x ** 3n + this.a * point.x + this.b);
+    const left = this.fp.mod(point.y ** 2n);
+    const right = this.fp.mod(point.x ** 3n + this.a * point.x + this.b);
     const result = left === right;
     this._onCurveCache.set(point.x, result);
     return result;
@@ -59,13 +47,13 @@ export class EllipticCurve {
     let x3: bigint, y3: bigint;
 
     if (p1.x !== p2.x) {
-      const m = this.mod((p2.y - p1.y) * this.inverse(p2.x - p1.x));
-      x3 = this.mod(m ** 2n - p1.x - p2.x);
-      y3 = this.mod(m * (p1.x - x3) - p1.y);
+      const m = this.fp.mod((p2.y - p1.y) * this.fp.inverse(p2.x - p1.x));
+      x3 = this.fp.mod(m ** 2n - p1.x - p2.x);
+      y3 = this.fp.mod(m * (p1.x - x3) - p1.y);
     } else {
-      const m = this.mod((3n * p1.x * p1.x + this.a) * this.inverse(2n * p1.y));
-      x3 = this.mod(m * m - 2n * p1.x);
-      y3 = this.mod(m * (p1.x - x3) - p1.y);
+      const m = this.fp.mod((3n * p1.x * p1.x + this.a) * this.fp.inverse(2n * p1.y));
+      x3 = this.fp.mod(m * m - 2n * p1.x);
+      y3 = this.fp.mod(m * (p1.x - x3) - p1.y);
     }
 
     return { x: x3, y: y3 };
