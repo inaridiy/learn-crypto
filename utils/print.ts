@@ -1,7 +1,10 @@
+import { Finite } from "../topics/EllipticCurve";
+
 const SPLITTER_LENGTH = 64;
 
 const printableTransform = (x: any) => {
   if (typeof x === "bigint") return "0x" + x.toString(16);
+
   return x;
 };
 
