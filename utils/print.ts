@@ -4,7 +4,8 @@ const SPLITTER_LENGTH = 64;
 
 const printableTransform = (x: any) => {
   if (typeof x === "bigint") return "0x" + x.toString(16);
-
+  if (typeof x === "object" && typeof x.serializeToHexStr === "function")
+    return "0x" + x.serializeToHexStr().slice(0, 20) + "...";
   return x;
 };
 
@@ -13,7 +14,7 @@ const printRecordNested = (title: string, x: Record<string, any>, depth: number)
   else console.log("== " + title + " " + "=".repeat(SPLITTER_LENGTH - title.length - 4));
 
   for (const key in x) {
-    if (typeof x[key] === "object") {
+    if (typeof x[key] === "object" && !x[key].serializeToHexStr) {
       for (const key2 in x[key]) {
         console.log(`${key}.${key2}: ${printableTransform(x[key][key2])}`);
       }
