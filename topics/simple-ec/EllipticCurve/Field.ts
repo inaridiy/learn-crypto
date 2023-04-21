@@ -1,6 +1,6 @@
 import { extendedGCD } from "./extendedGCD";
 
-export class Finite {
+export class Field {
   private _inverseCache: Map<bigint, bigint> = new Map();
 
   constructor(readonly prime: bigint) {}

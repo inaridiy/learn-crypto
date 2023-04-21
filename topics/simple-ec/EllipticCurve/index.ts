@@ -1,3 +1,3 @@
 export * from "./EllipticCurve";
 export * from "./extendedGCD";
-export * from "./Finite";
+export * from "./Field";

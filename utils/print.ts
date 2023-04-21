@@ -1,5 +1,3 @@
-import { Finite } from "../topics/EllipticCurve";
-
 const SPLITTER_LENGTH = 64;
 
 const printableTransform = (x: any) => {

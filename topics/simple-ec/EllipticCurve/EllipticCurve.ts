@@ -1,4 +1,4 @@
-import { Finite } from "./Finite";
+import { Field } from "./Field";
 
 export type Point = Readonly<{
   x: bigint;
@@ -9,7 +9,7 @@ export class EllipticCurve {
   readonly a: bigint;
   readonly b: bigint;
   readonly p: bigint;
-  readonly fp: Finite;
+  readonly fp: Field;
   private _onCurveCache: Map<bigint, boolean> = new Map();
 
   static BIG_PRIME = 2n ** 256n - 2n ** 32n - 977n;
@@ -25,7 +25,7 @@ export class EllipticCurve {
     this.a = a;
     this.b = b;
     this.p = p;
-    this.fp = new Finite(p);
+    this.fp = new Field(p);
   }
 
   public isOnCurve(point: Point): boolean {
