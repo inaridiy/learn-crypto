@@ -1,13 +1,16 @@
 import { EllipticCurve } from "./EllipticCurve";
 import { print } from "../utils/print";
 
-const curve = new EllipticCurve(4n, 14n);
-const point1 = { x: -1n, y: 3n };
-let current = point1;
+const curve = EllipticCurve.SECP256K1;
+const point1 = EllipticCurve.SECP256K1_G;
+let current = EllipticCurve.ZERO_POINT;
 
-for (let i = 1; i < 16; i++) {
-  print(i.toString(), { ...current, OK: curve.isOnCurve(current) });
+console.time("add");
+
+for (let i = 0; i < 1000; i++) {
   current = curve.add(current, point1);
 }
 
-print("point1", { ...curve.multiply(point1, 16n), OK: curve.isOnCurve(point1) });
+const ans = curve.multiply(point1, 1000n);
+print("Result", { current, ans });
+console.timeEnd("add");

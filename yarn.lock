@@ -2739,6 +2739,7 @@ __metadata:
     "@types/jest": ^29.5.0
     "@types/node": ^18.15.11
     jest: ^29.5.0
+    mcl-wasm: ^1.0.6
     prettier: ^2.8.7
     ts-jest: ^29.1.0
     tsx: ^3.12.6
@@ -2847,6 +2848,13 @@ __metadata:
   dependencies:
     tmpl: 1.0.5
   checksum: b38a025a12c8146d6eeea5a7f2bf27d51d8ad6064da8ca9405fcf7bf9b54acd43e3b30ddd7abb9b1bfa4ddb266019133313482570ddb207de568f71ecfcf6060
+  languageName: node
+  linkType: hard
+
+"mcl-wasm@npm:^1.0.6":
+  version: 1.0.6
+  resolution: "mcl-wasm@npm:1.0.6"
+  checksum: 1dae65869b1e4f29fdf6de68043e89470b264e28e78c6dcb249f688c1e97e5b5fd52d933a8c0584f084a0fa0ef140d99a702aeb2f36838f35c054bf2b90c5f5b
   languageName: node
   linkType: hard
 

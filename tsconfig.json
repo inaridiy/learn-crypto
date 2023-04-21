@@ -1,4 +1,9 @@
 {
   "extends": "@tsconfig/node18",
-  "exclude": ["node_modules"]
+  "compilerOptions": {
+    "module": "NodeNext"
+  },
+  "exclude": [
+    "node_modules"
+  ]
 }

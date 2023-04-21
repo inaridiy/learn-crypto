@@ -20,7 +20,7 @@ const sign = (
   k?: bigint
 ): [bigint, bigint] => {
   const z = fr.mod(msg);
-  k ??= fr.mod(random(BIG_NUM));
+  k ??= fr.mod(random(BIG_NUM)); //仮秘密鍵に相当する
   const Q = curve.multiply(G, k);
   const r = fr.mod(Q.x);
   return [r, fr.div(r * s + z, k)];

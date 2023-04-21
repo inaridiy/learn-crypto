@@ -2,6 +2,7 @@
   "name": "learn-crypto",
   "version": "1.0.0",
   "main": "index.js",
+  "type": "module",
   "author": "inaridiy <inainainariinainari@gmail.com>",
   "license": "MIT",
   "packageManager": "yarn@3.5.0",
@@ -17,5 +18,8 @@
     "ts-jest": "^29.1.0",
     "tsx": "^3.12.6",
     "typescript": "^5.0.4"
+  },
+  "dependencies": {
+    "mcl-wasm": "^1.0.6"
   }
 }
