@@ -1,5 +1,5 @@
 import { EllipticCurve } from "./EllipticCurve";
-import { print } from "../utils/print";
+import { print } from "../../utils/print";
 
 const curve = EllipticCurve.SECP256K1;
 const point1 = EllipticCurve.SECP256K1_G;

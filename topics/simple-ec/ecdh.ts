@@ -1,6 +1,6 @@
-import { print } from "../utils/print";
+import { print } from "../../utils/print";
 import { EllipticCurve } from "./EllipticCurve";
-import { random } from "./random";
+import { random } from "./../random";
 
 const BIG_NUM = 2n ** 256n;
 

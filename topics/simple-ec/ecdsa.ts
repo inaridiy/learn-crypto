@@ -1,6 +1,6 @@
-import { print } from "../utils/print";
-import { EllipticCurve, Finite, Point } from "./EllipticCurve";
-import { random } from "./random";
+import { print } from "../../utils/print";
+import { EllipticCurve, Field, Point } from "./EllipticCurve";
+import { random } from "./../random";
 
 const BIG_NUM = 2n ** 256n;
 
@@ -8,7 +8,7 @@ const curve = EllipticCurve.SECP256K1;
 const s = 0x83ecb3984a4f9ff03e84d5f9c0d7f888a81833643047acc58eb6431e01d9bac8n;
 const S = curve.multiply(EllipticCurve.SECP256K1_G, s); //公開鍵
 const msg = "こんにちは".split("").reduce((acc, c) => acc * 256n + BigInt(c.charCodeAt(0)), 0n);
-const fr = new Finite(0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141n); // 大きい素数
+const fr = new Field(0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141n); // 大きい素数
 
 print("State", { s, S, msg });
 

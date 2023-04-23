@@ -41,7 +41,7 @@ export class EllipticCurve {
     if (p1.x === 0n && p1.y === 0n) return p2;
     if (p2.x === 0n && p2.y === 0n) return p1;
     if (!this.isOnCurve(p1) || !this.isOnCurve(p2)) throw new Error("Points must be on curve");
-    if (p1.x > p2.x) [p1, p2] = [p2, p1]; //巡回群内での演算の高速化をいつつ、アンダーフローを防止する。
+    if (p1.x > p2.x) [p1, p2] = [p2, p1]; //巡回群内での演算の高速化をしつつ、アンダーフローを防止する。
 
     let x3: bigint, y3: bigint;
 

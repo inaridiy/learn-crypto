@@ -1,6 +1,6 @@
 import { extendedGCD } from "./extendedGCD";
 
-export class Field {
+export class FiniteField {
   constructor(readonly prime: bigint) {}
 
   public inverse(n: bigint): bigint {
