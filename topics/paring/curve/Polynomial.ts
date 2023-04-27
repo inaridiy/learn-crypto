@@ -1,1 +1,3 @@
-export class Polynomial {}
+export class Polynomial {
+  constructor() {}
+}
