@@ -29,6 +29,7 @@ export class EllipticCurve {
   }
 
   public isOnCurve(point: Point): boolean {
+    if (point.x === 0n && point.y === 0n) return true;
     if (this._onCurveCache.has(point.x)) return this._onCurveCache.get(point.x)!;
     const left = this.fp.mod(point.y ** 2n);
     const right = this.fp.mod(point.x ** 3n + this.a * point.x + this.b);
@@ -46,9 +47,11 @@ export class EllipticCurve {
     let x3: bigint, y3: bigint;
 
     if (p1.x !== p2.x) {
-      const m = this.fp.div(p2.y - p1.y, p2.x - p1.x);
+      const m = this.fp.div(this.fp.sub(p2.y, p1.y), p2.x - p1.x);
       x3 = this.fp.mod(m ** 2n - p1.x - p2.x);
       y3 = this.fp.mod(m * (p1.x - x3) - p1.y);
+    } else if (p1.y !== p2.y) {
+      return EllipticCurve.ZERO_POINT;
     } else {
       const m = this.fp.div(3n * p1.x * p1.x + this.a, 2n * p1.y);
       x3 = this.fp.mod(m * m - 2n * p1.x);
