@@ -3,14 +3,9 @@ import { print } from "../../utils/print";
 
 const curve = EllipticCurve.SECP256K1;
 const point1 = EllipticCurve.SECP256K1_G;
-let current = EllipticCurve.ZERO_POINT;
+const zero = EllipticCurve.ZERO_POINT;
 
-console.time("add");
+const L = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141n;
 
-for (let i = 0; i < 1000; i++) {
-  current = curve.add(current, point1);
-}
-
-const ans = curve.multiply(point1, 1000n);
-print("Result", { current, ans });
-console.timeEnd("add");
+const zero2 = curve.multiply(point1, L + 1n); // 0n
+print(zero2);
