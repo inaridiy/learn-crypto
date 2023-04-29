@@ -47,7 +47,7 @@ export class EllipticCurve {
     let x3: bigint, y3: bigint;
 
     if (p1.x !== p2.x) {
-      const m = this.fp.div(this.fp.sub(p2.y, p1.y), p2.x - p1.x);
+      const m = this.fp.div(p2.y - p1.y, p2.x - p1.x);
       x3 = this.fp.mod(m ** 2n - p1.x - p2.x);
       y3 = this.fp.mod(m * (p1.x - x3) - p1.y);
     } else if (p1.y !== p2.y) {

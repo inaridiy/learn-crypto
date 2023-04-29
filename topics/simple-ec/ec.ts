@@ -7,5 +7,6 @@ const zero = EllipticCurve.ZERO_POINT;
 
 const L = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141n;
 
-const zero2 = curve.multiply(point1, L + 1n); // 0n
-print(zero2);
+const zero2 = curve.multiply(point1, L);
+
+print("zero2", zero2);
