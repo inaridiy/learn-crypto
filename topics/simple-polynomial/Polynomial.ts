@@ -1,7 +1,7 @@
 export class Polynomial {
   public readonly coefficients: number[];
 
-  static normalize(coefficients: number[], degree = coefficients.length): number[] {
+  static normalize(coefficients: number[]): number[] {
     let result = [...coefficients];
     while (result.length > 1 && result[result.length - 1] === 0) result.pop();
     return result;
@@ -20,7 +20,7 @@ export class Polynomial {
   add(other_: Polynomial | number[]): Polynomial {
     const other = Polynomial.mustBePolynomial(other_);
     const maxLen = Math.max(this.coefficients.length, other.coefficients.length);
-    const result = Array(maxLen).fill(0);
+    const result: number[] = Array(maxLen).fill(0);
 
     for (let i = 0; i < maxLen; i++) {
       const a = this.coefficients[i] || 0;

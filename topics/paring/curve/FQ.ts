@@ -4,16 +4,28 @@ export class FQ {
   public readonly p: bigint;
   public readonly n: bigint;
 
+  static zero(p: bigint): FQ {
+    return new FQ(p, 0n);
+  }
+
   constructor(p: bigint, n: bigint) {
     this.p = p;
     this.n = n;
   }
 
-  mustBeFQ(other: FQ | bigint): FQ {
+  static mustBeFQ(other: FQ | bigint, p: bigint): FQ {
     if (other instanceof FQ)
-      if (this.p !== other.p) throw new Error("FQs must have same p");
+      if (p !== other.p) throw new Error("FQs must have same p");
       else return other;
-    else return new FQ(this.p, other);
+    else return new FQ(p, other);
+  }
+
+  mustBeFQ(other: FQ | bigint): FQ {
+    return FQ.mustBeFQ(other, this.p);
+  }
+
+  isZero(): boolean {
+    return this.n === 0n;
   }
 
   clone(): FQ {
