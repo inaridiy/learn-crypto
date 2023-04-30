@@ -71,6 +71,11 @@ export class EllipticCurve {
     return point;
   }
 
+  public sub(p1: Point, p2: Point): Point {
+    if (p2.x === 0n && p2.y === 0n) return p1;
+    return this._add(p1, { x: p2.x, y: this.fp.mod(-p2.y) });
+  }
+
   public multiply(point: Point, n: bigint): Point {
     if (n < 0n) throw new Error("n must be positive");
     if (n === 0n) return EllipticCurve.ZERO_POINT;
