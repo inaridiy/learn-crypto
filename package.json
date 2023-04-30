@@ -20,6 +20,7 @@
     "typescript": "^5.0.4"
   },
   "dependencies": {
-    "mcl-wasm": "^1.0.6"
+    "mcl-wasm": "^1.0.6",
+    "mitata": "^0.1.6"
   }
 }

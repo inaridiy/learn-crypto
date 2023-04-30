@@ -2740,6 +2740,7 @@ __metadata:
     "@types/node": ^18.15.11
     jest: ^29.5.0
     mcl-wasm: ^1.0.6
+    mitata: ^0.1.6
     prettier: ^2.8.7
     ts-jest: ^29.1.0
     tsx: ^3.12.6
@@ -2974,6 +2975,13 @@ __metadata:
     minipass: ^3.0.0
     yallist: ^4.0.0
   checksum: f1fdeac0b07cf8f30fcf12f4b586795b97be856edea22b5e9072707be51fc95d41487faec3f265b42973a304fe3a64acd91a44a3826a963e37b37bafde0212c3
+  languageName: node
+  linkType: hard
+
+"mitata@npm:^0.1.6":
+  version: 0.1.6
+  resolution: "mitata@npm:0.1.6"
+  checksum: fe64e22ae17bfb748a0d71b2ecf1f64da09c633520c819ac409018a49843adfd9817612a152651e5f1fa080f227fc382e0cdbb92a11e2f69f3cc9f843ba7d603
   languageName: node
   linkType: hard
 
