@@ -1,2 +1,6 @@
 node_modules
 .yarn/cache
+
+# Added by cargo
+
+/target
