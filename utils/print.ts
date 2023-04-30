@@ -1,9 +1,12 @@
+import { Polynomial } from "../topics/paring/curve/Polynomial";
+
 const SPLITTER_LENGTH = 64;
 
 const printableTransform = (x: any) => {
   if (typeof x === "bigint") return "0x" + x.toString(16);
   if (typeof x === "object" && typeof x.serializeToHexStr === "function")
     return "0x" + x.serializeToHexStr().slice(0, 20) + "...";
+  if (x instanceof Polynomial) return x.toString();
   return x;
 };
 

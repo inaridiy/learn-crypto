@@ -61,8 +61,8 @@ export class Polynomial {
 
   eval(x: number): number {
     let result = 0;
-    for (let i = this.coefficients.length - 1; i >= 0; i--) {
-      result = result * x + this.coefficients[i];
+    for (let i = 0; i < this.coefficients.length; i++) {
+      result += this.coefficients[i] * Math.pow(x, i);
     }
     return result;
   }
