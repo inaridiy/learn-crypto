@@ -1,5 +1,7 @@
 import { FQ } from "./curve/FQ";
 import { ExtFQ } from "./curve/ExtFQ";
+import { Polynomial } from "./curve/Polynomial";
+import { print } from "../../utils/print";
 
 const q = 2n;
 const extDegree = 2;
@@ -11,7 +13,7 @@ for (let i = 0n; i < q; i++) {
   for (let j = 0n; j < q; j++) {
     const a = new FQ(q, i);
     const b = new FQ(q, j);
-    const c = a.add(b);
+    const c = a.mul(b);
     result1[Number(i)][Number(j)] = c.n;
   }
 }
@@ -24,7 +26,7 @@ const result2: string[][] = [];
 for (const i in values) {
   result2[Number(i)] = [];
   for (const j in values) {
-    const a = extFQ.add(values[i], values[j]);
+    const a = extFQ.mul(values[i], values[j]);
     result2[Number(i)][Number(j)] = a.toString();
   }
 }

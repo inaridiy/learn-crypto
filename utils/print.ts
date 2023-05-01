@@ -15,7 +15,8 @@ const printRecordNested = (title: string, x: Record<string, any>, depth: number)
   else console.log("== " + title + " " + "=".repeat(SPLITTER_LENGTH - title.length - 4));
 
   for (const key in x) {
-    if (typeof x[key] === "object" && !x[key].serializeToHexStr) {
+    if (x[key] instanceof Polynomial) console.log(`${key}: ${printableTransform(x[key])}`);
+    else if (typeof x[key] === "object" && !x[key].serializeToHexStr) {
       for (const key2 in x[key]) {
         console.log(`${key}.${key2}: ${printableTransform(x[key][key2])}`);
       }

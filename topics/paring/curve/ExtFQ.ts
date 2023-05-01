@@ -1,5 +1,4 @@
 import { Polynomial, PolynomialLike } from "./Polynomial";
-import { FQ } from "./FQ";
 
 export class ExtFQ {
   public readonly p: bigint;
@@ -19,5 +18,11 @@ export class ExtFQ {
     const a_ = Polynomial.mustBePolynomial(a, this.p);
     const b_ = Polynomial.mustBePolynomial(b, this.p);
     return a_.add(b_);
+  }
+
+  mul(a: PolynomialLike, b: PolynomialLike): Polynomial {
+    const a_ = Polynomial.mustBePolynomial(a, this.p);
+    const b_ = Polynomial.mustBePolynomial(b, this.p);
+    return a_.mul(b_).mod(this.modPoly);
   }
 }

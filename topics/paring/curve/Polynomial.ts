@@ -36,9 +36,21 @@ export class Polynomial {
     return this.coefficients.length - 1;
   }
 
-  mod(other: PolynomialLike) {
+  mod(other: PolynomialLike): Polynomial {
     const other_ = this.mustBePolynomial(other);
     if (this.degree() < other_.degree()) return this;
+
+    let result = this.clone();
+    while (result.degree() >= other_.degree()) {
+      const degreeDiff = result.degree() - other_.degree();
+      const coeff = result.coefficients[result.degree()].div(other_.coefficients[other_.degree()]);
+      const monomialCoefficients = Array(degreeDiff + 1).fill(FQ.zero(this.p));
+      monomialCoefficients[degreeDiff] = coeff;
+      const monomial = new Polynomial(monomialCoefficients, this.p);
+      result = result.sub(monomial.mul(other_));
+    }
+
+    return result;
   }
 
   add(other: PolynomialLike): Polynomial {
@@ -94,11 +106,14 @@ export class Polynomial {
 
   toString(): string {
     const terms = this.coefficients.map((c, i) => {
-      if (c.isZero()) return "0";
-      else if (i === 0) return `${Number(c.n)}`;
-      else if (i === 1) return `${Number(c.n)}x`;
-      else return `${Number(c.n)}x^${i}`;
+      const cn = Number(c.n);
+      if (c.isZero())
+        if (this.coefficients.length === 1) return "0";
+        else return "";
+      else if (i === 0) return `${cn}`;
+      else if (i === 1) return `${cn === 1 ? "" : cn}x`;
+      else return `${cn === 1 ? "" : cn}x^${i}`;
     });
-    return terms.reverse().join(" + ");
+    return terms.reverse().join("+").replace(/\+\-/g, "-").replace(/\+$/g, "").replace(/\++/g, "+");
   }
 }

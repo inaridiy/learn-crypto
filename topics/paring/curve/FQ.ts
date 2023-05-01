@@ -10,7 +10,7 @@ export class FQ {
 
   constructor(p: bigint, n: bigint) {
     this.p = p;
-    this.n = n;
+    this.n = this._mod(n);
   }
 
   static mustBeFQ(other: FQ | bigint, p: bigint): FQ {
