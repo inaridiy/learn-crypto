@@ -28,6 +28,19 @@ export class Polynomial {
     return Polynomial.mustBePolynomial(other, this.p);
   }
 
+  clone(): Polynomial {
+    return new Polynomial(this.coefficients, this.p);
+  }
+
+  degree(): number {
+    return this.coefficients.length - 1;
+  }
+
+  mod(other: PolynomialLike) {
+    const other_ = this.mustBePolynomial(other);
+    if (this.degree() < other_.degree()) return this;
+  }
+
   add(other: PolynomialLike): Polynomial {
     const other_ = this.mustBePolynomial(other);
     const maxLen = Math.max(this.coefficients.length, other_.coefficients.length);
