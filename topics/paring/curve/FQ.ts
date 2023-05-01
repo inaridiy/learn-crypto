@@ -1,4 +1,4 @@
-import { extendedGCD } from "./extendedGCD";
+import { extGCD } from "./extendedGCD";
 
 export class FQ {
   public readonly p: bigint;
@@ -32,6 +32,11 @@ export class FQ {
     return new FQ(this.p, this.n);
   }
 
+  eq(other: FQ | bigint): boolean {
+    const other_ = this.mustBeFQ(other);
+    return this.n === other_.n;
+  }
+
   private _mod(n: bigint): bigint {
     const r = n % this.p;
     return 0n > r ? r + this.p : r;
@@ -43,7 +48,7 @@ export class FQ {
   }
 
   private _inverse(): bigint {
-    const [gcd, x] = extendedGCD(this.n, this.p);
+    const [gcd, x] = extGCD(this.n, this.p);
     if (gcd !== 1n) throw new Error("No inverse");
     const result = this._mod(x);
     return result;
