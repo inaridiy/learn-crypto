@@ -94,7 +94,7 @@ export class Polynomial {
 
   toString(): string {
     const terms = this.coefficients.map((c, i) => {
-      if (c.isZero()) return "";
+      if (c.isZero()) return "0";
       else if (i === 0) return `${Number(c.n)}`;
       else if (i === 1) return `${Number(c.n)}x`;
       else return `${Number(c.n)}x^${i}`;
