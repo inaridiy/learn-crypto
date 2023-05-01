@@ -20,6 +20,12 @@ export class ExtFQ {
     return a_.add(b_);
   }
 
+  sub(a: PolynomialLike, b: PolynomialLike): Polynomial {
+    const a_ = Polynomial.mustBePolynomial(a, this.p);
+    const b_ = Polynomial.mustBePolynomial(b, this.p);
+    return a_.sub(b_);
+  }
+
   mul(a: PolynomialLike, b: PolynomialLike): Polynomial {
     const a_ = Polynomial.mustBePolynomial(a, this.p);
     const b_ = Polynomial.mustBePolynomial(b, this.p);

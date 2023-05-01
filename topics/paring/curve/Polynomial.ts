@@ -106,13 +106,12 @@ export class Polynomial {
 
   toString(): string {
     const terms = this.coefficients.map((c, i) => {
-      const cn = Number(c.n);
       if (c.isZero())
         if (this.coefficients.length === 1) return "0";
         else return "";
-      else if (i === 0) return `${cn}`;
-      else if (i === 1) return `${cn === 1 ? "" : cn}x`;
-      else return `${cn === 1 ? "" : cn}x^${i}`;
+      else if (i === 0) return `${c.n}`;
+      else if (i === 1) return `${c.n === 1n ? "" : c.n}x`;
+      else return `${c.n === 1n ? "" : c.n}x^${i}`;
     });
     return terms.reverse().join("+").replace(/\+\-/g, "-").replace(/\+$/g, "").replace(/\++/g, "+");
   }

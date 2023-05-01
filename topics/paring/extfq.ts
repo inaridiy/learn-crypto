@@ -1,34 +1,22 @@
 import { FQ } from "./curve/FQ";
 import { ExtFQ } from "./curve/ExtFQ";
-import { Polynomial } from "./curve/Polynomial";
-import { print } from "../../utils/print";
 
-const q = 2n;
-const extDegree = 2;
-const extModPoly = [1n, 1n, 1n];
+const q =
+  4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787n;
+const extModPoly = [1n, 0n, 1n];
 
-const result1: bigint[][] = [];
-for (let i = 0n; i < q; i++) {
-  result1[Number(i)] = [];
-  for (let j = 0n; j < q; j++) {
-    const a = new FQ(q, i);
-    const b = new FQ(q, j);
-    const c = a.mul(b);
-    result1[Number(i)][Number(j)] = c.n;
-  }
-}
+const extfq = new ExtFQ(q, extModPoly);
 
-console.table(result1);
+const P1 = [
+  352701069587466618187139116011060144890029952792775240219908644239793785735715026873347600343865175952761926303160n,
+  3059144344244213709971259814753781636986470325476647558659373206291635324768958432433509563104347017837885763365758n,
+];
 
-const extFQ = new ExtFQ(q, extModPoly);
-const values = [[0n], [1n], [0n, 1n], [1n, 1n]]; // 0, 1, x, x + 1
-const result2: string[][] = [];
-for (const i in values) {
-  result2[Number(i)] = [];
-  for (const j in values) {
-    const a = extFQ.mul(values[i], values[j]);
-    result2[Number(i)][Number(j)] = a.toString();
-  }
-}
+const P2 = [
+  1985150602287291935568054521177171638300868978215655730859378665066344726373823718423869104263333984641494340347905n,
+  927553665492332455747201965776037880757740193453592970025027978793976877002675564980949289727957565575433344219582n,
+];
 
-console.table(result2);
+const P3 = extfq.mul(P1, P2);
+
+console.log(P3.toString());
