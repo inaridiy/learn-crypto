@@ -3,6 +3,22 @@ import { extGCD } from "./extendedGCD";
 
 export type ExtFQLike = ExtFQ | PolynomialLike;
 
+export class ExtFQFactory {
+  constructor(public readonly p: bigint, public readonly modPoly: PolynomialLike) {}
+
+  zero(): ExtFQ {
+    return ExtFQ.zero(this.p, this.modPoly);
+  }
+
+  one(): ExtFQ {
+    return new ExtFQ(this.p, this.modPoly, new Polynomial([1n], this.p));
+  }
+
+  from(value: PolynomialLike): ExtFQ {
+    return new ExtFQ(this.p, this.modPoly, value);
+  }
+}
+
 export class ExtFQ {
   public readonly p: bigint;
   public readonly degree: number;

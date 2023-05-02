@@ -20,6 +20,11 @@ export class FQ {
     else return new FQ(p, other);
   }
 
+  extend(other: FQ | bigint): FQ {
+    const other_ = this.mustBeFQ(other);
+    return new FQ(this.p, other_.n);
+  }
+
   mustBeFQ(other: FQ | bigint): FQ {
     return FQ.mustBeFQ(other, this.p);
   }
@@ -42,9 +47,8 @@ export class FQ {
     return 0n > r ? r + this.p : r;
   }
 
-  mod(other: FQ | bigint): FQ {
-    const other_ = this.mustBeFQ(other);
-    return new FQ(this.p, this._mod(other_.n));
+  mod(): FQ {
+    return new FQ(this.p, this._mod(this.n));
   }
 
   private _inverse(): bigint {
@@ -81,7 +85,7 @@ export class FQ {
   pow(n: bigint): FQ {
     if (n === 0n) return new FQ(this.p, 1n);
     if (n === 1n) return this.clone();
-    if (8n > n) return this.mod(this.n ** n); //nが小さい場合は普通に計算する
+    if (8n > n) return this.extend(this._mod(this.n ** n)); //nが小さい場合は普通に計算する
 
     let result = this.clone();
     let m = n;
