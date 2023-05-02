@@ -58,9 +58,10 @@ export class Polynomial {
   mod(other: PolynomialLike): Polynomial {
     const other_ = this.mustBePolynomial(other);
     if (this.degree() < other_.degree()) return this;
+    if (other_.degree() === 0) return Polynomial.zero(this.p);
 
     let result = this.clone();
-    while (result.degree() >= other_.degree() && !result.isZero()) {
+    while (result.degree() >= other_.degree()) {
       const degreeDiff = result.degree() - other_.degree();
       const coeff = result.coefficients[result.degree()].div(other_.coefficients[other_.degree()]);
       const monomialCoefficients = Array(degreeDiff + 1).fill(FQ.zero(this.p));
@@ -117,15 +118,18 @@ export class Polynomial {
     const other_ = this.mustBePolynomial(other);
     if (other_.isZero()) throw new Error("Division by zero");
     if (this.degree() < other_.degree()) return new Polynomial([0n], this.p);
+    if (other_.degree() === 0) {
+      const coeffes = this.coefficients.map((c) => c.div(other_.coefficients[0]));
+      return new Polynomial(coeffes, this.p);
+    }
 
     let result = Polynomial.zero(this.p);
     let dividend = this.clone();
-    while (dividend.degree() >= other_.degree() && !dividend.isZero()) {
+    while (dividend.degree() >= other_.degree()) {
       const degreeDiff = dividend.degree() - other_.degree();
       const coeff = dividend.coefficients[dividend.degree()].div(
         other_.coefficients[other_.degree()]
       );
-
       const monomialCoefficients = Array(degreeDiff + 1).fill(FQ.zero(this.p));
       monomialCoefficients[degreeDiff] = coeff;
       const monomial = new Polynomial(monomialCoefficients, this.p);

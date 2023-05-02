@@ -1,10 +1,9 @@
-import { FQ } from "./curve/FQ";
 import { ExtFQ } from "./curve/ExtFQ";
 import { Polynomial } from "./curve/Polynomial";
 
 const q =
   4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787n;
-const extModPoly = [1n, 0n, 1n];
+const extModPoly = new Polynomial([1n, 0n, 1n], q);
 
 const extfq = new ExtFQ(q, extModPoly);
 
@@ -24,8 +23,6 @@ const P2 = new Polynomial(
   q
 );
 
-const P3 = extfq.add(P1, P2);
+const P3 = extfq.div(P1, P2);
 
-console.log(extfq.sub(P3, P1).eq(P2));
-
-const P4 = extfq.mul(P1, P2);
+console.log(P3.toString());

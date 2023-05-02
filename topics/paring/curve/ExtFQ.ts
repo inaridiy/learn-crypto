@@ -15,11 +15,19 @@ export class ExtFQ {
     this.modPoly = modPoly_;
   }
 
+  /**
+   *
+   * @returns
+   */
   inverse(a: PolynomialLike): Polynomial {
     const a_ = Polynomial.mustBePolynomial(a, this.p);
-    const [gcd, x] = extGCD(a_, this.modPoly);
-    if (gcd.degree() !== 0) throw new Error("No inverse");
-    return x.mod(this.modPoly);
+    const [g, x, _] = extGCD(a_, this.modPoly);
+    //公約数が定数項の場合は逆元が存在しない
+    if (g.degree() !== 0) throw new Error("Not invertible");
+    //定数項が1でない場合は、定数項を1にするために定数項で割って正規化する?
+    else if (g.coefficients[0].n !== 1n) return x.div(g);
+    //定数項が1の場合はそのまま返す
+    else return x;
   }
 
   mod(a: PolynomialLike): Polynomial {
