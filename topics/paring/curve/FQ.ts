@@ -1,6 +1,25 @@
+import { Field, FieldFactory } from "./types";
 import { extGCD } from "./extendedGCD";
 
-export class FQ {
+export type FQLike = FQ | bigint;
+
+export class FQFactory implements FieldFactory<FQ, FQLike> {
+  constructor(public readonly p: bigint) {}
+
+  zero(): FQ {
+    return FQ.zero(this.p);
+  }
+
+  one(): FQ {
+    return new FQ(this.p, 1n);
+  }
+
+  from(value: FQLike): FQ {
+    return FQ.mustBeFQ(value, this.p);
+  }
+}
+
+export class FQ implements Field<FQ, FQLike> {
   public readonly p: bigint;
   public readonly n: bigint;
 
