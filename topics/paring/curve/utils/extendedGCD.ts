@@ -1,5 +1,5 @@
-import { print } from "../../../utils/print";
-import { Polynomial } from "./Polynomial";
+import { print } from "../../../../utils/print";
+import { Polynomial } from "../Polynomial";
 
 export const extGCD = <T = bigint>(a: T, b: T): [T, T, T] => {
   if (typeof a === "bigint") return bigintExtGCD(a, b as bigint) as any;
@@ -27,6 +27,7 @@ export const bigintExtGCD = (a: bigint, b: bigint): [bigint, bigint, bigint] => 
   return [b, x, y];
 };
 
+//上と実装が違うが、試行錯誤していたため
 export const polyExtGCD = (a: Polynomial, b: Polynomial): [Polynomial, Polynomial, Polynomial] => {
   if (a.p !== b.p) throw new Error("Must be same field");
 

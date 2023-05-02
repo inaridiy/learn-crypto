@@ -1,5 +1,6 @@
 import { Field, FieldFactory } from "./types";
-import { extGCD } from "./extendedGCD";
+import { extGCD } from "./utils/extendedGCD";
+import { fastPow } from "./utils/fastPow";
 
 export type FQLike = FQ | bigint;
 
@@ -23,10 +24,6 @@ export class FQ implements Field<FQ, FQLike> {
   public readonly p: bigint;
   public readonly n: bigint;
 
-  static zero(p: bigint): FQ {
-    return new FQ(p, 0n);
-  }
-
   constructor(p: bigint, n: bigint) {
     this.p = p;
     this.n = this._mod(n);
@@ -38,14 +35,18 @@ export class FQ implements Field<FQ, FQLike> {
       else return other;
     else return new FQ(p, other);
   }
+  mustBeFQ(other: FQ | bigint): FQ {
+    return FQ.mustBeFQ(other, this.p);
+  }
+
+  static zero = (p: bigint): FQ => new FQ(p, 0n);
+  static one = (p: bigint): FQ => new FQ(p, 1n);
+  zero = (): FQ => FQ.zero(this.p);
+  one = (): FQ => FQ.one(this.p);
 
   extend(other: FQ | bigint): FQ {
     const other_ = this.mustBeFQ(other);
     return new FQ(this.p, other_.n);
-  }
-
-  mustBeFQ(other: FQ | bigint): FQ {
-    return FQ.mustBeFQ(other, this.p);
   }
 
   isZero(): boolean {
@@ -102,20 +103,6 @@ export class FQ implements Field<FQ, FQLike> {
   }
 
   pow(n: bigint): FQ {
-    if (n === 0n) return new FQ(this.p, 1n);
-    if (n === 1n) return this.clone();
-    if (8n > n) return this.extend(this._mod(this.n ** n)); //nが小さい場合は普通に計算する
-
-    let result = this.clone();
-    let m = n;
-    while (m > 1n) {
-      if (m % 2n === 1n) {
-        result = result.mul(this);
-        m -= 1n;
-      }
-      result = result.mul(result);
-      m /= 2n;
-    }
-    return result;
+    return fastPow(this, n);
   }
 }

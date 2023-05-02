@@ -1,14 +1,12 @@
 import { FQ } from "./FQ";
+import { Field } from "./types";
+import { fastPow } from "./utils/fastPow";
 
 export type PolynomialLike = Polynomial | bigint[] | FQ[];
 
-export class Polynomial {
+export class Polynomial implements Field<Polynomial, PolynomialLike> {
   public readonly p: bigint;
   public readonly coefficients: FQ[];
-
-  static zero(p: bigint): Polynomial {
-    return new Polynomial([FQ.zero(p)], p);
-  }
 
   constructor(coefficients_: bigint[] | FQ[], p: bigint) {
     this.p = p;
@@ -32,8 +30,17 @@ export class Polynomial {
     return Polynomial.mustBePolynomial(other, this.p);
   }
 
+  static zero = (p: bigint): Polynomial => new Polynomial([FQ.zero(p)], p);
+  static one = (p: bigint): Polynomial => new Polynomial([FQ.one(p)], p);
+  zero = (): Polynomial => Polynomial.zero(this.p);
+  one = (): Polynomial => Polynomial.one(this.p);
+
   clone(): Polynomial {
     return new Polynomial(this.coefficients, this.p);
+  }
+
+  extend(value: PolynomialLike): Polynomial {
+    return this.mustBePolynomial(value);
   }
 
   degree(): number {
@@ -138,6 +145,11 @@ export class Polynomial {
     }
 
     return result;
+  }
+
+  pow(n: bigint): Polynomial {
+    //多分すぐオーバーフローする
+    return fastPow(this, n);
   }
 
   eval(x: FQ | bigint): FQ {

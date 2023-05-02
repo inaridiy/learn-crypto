@@ -1,6 +1,7 @@
 import { Polynomial, PolynomialLike } from "./Polynomial";
-import { extGCD } from "./extendedGCD";
+import { extGCD } from "./utils/extendedGCD";
 import { FieldFactory, Field } from "./types";
+import { fastPow } from "./utils/fastPow";
 
 export type ExtFQLike = ExtFQ | PolynomialLike;
 
@@ -27,10 +28,6 @@ export class ExtFQ implements Field<ExtFQ, ExtFQLike> {
 
   public readonly value: Polynomial;
 
-  static zero(p: bigint, modPoly: PolynomialLike): ExtFQ {
-    return new ExtFQ(p, modPoly, Polynomial.zero(p));
-  }
-
   constructor(p: bigint, modPoly: PolynomialLike, value: PolynomialLike) {
     const modPoly_ = Polynomial.mustBePolynomial(modPoly, p);
     const value_ = Polynomial.mustBePolynomial(value, p);
@@ -48,10 +45,21 @@ export class ExtFQ implements Field<ExtFQ, ExtFQLike> {
     else return new ExtFQ(p, modPoly, other);
   }
 
+  static zero = (p: bigint, modPoly: PolynomialLike): ExtFQ =>
+    new ExtFQ(p, modPoly, Polynomial.zero(p));
+  static one = (p: bigint, modPoly: PolynomialLike): ExtFQ =>
+    new ExtFQ(p, modPoly, Polynomial.one(p));
+  zero = (): ExtFQ => ExtFQ.zero(this.p, this.modPoly);
+  one = (): ExtFQ => ExtFQ.one(this.p, this.modPoly);
+
   extend(value: PolynomialLike): ExtFQ {
     const value_ = Polynomial.mustBePolynomial(value, this.p);
     if (this.p !== value_.p) throw new Error("Must be same field");
     return new ExtFQ(this.p, this.modPoly, value_);
+  }
+
+  clone(): ExtFQ {
+    return new ExtFQ(this.p, this.modPoly, this.value);
   }
 
   eq(other: ExtFQLike): boolean {
@@ -106,7 +114,7 @@ export class ExtFQ implements Field<ExtFQ, ExtFQLike> {
   }
 
   pow(n: bigint): ExtFQ {
-    throw new Error("Not implemented");
+    return fastPow(this, n);
   }
 
   toString(): string {

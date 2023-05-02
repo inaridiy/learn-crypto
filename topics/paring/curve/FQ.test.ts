@@ -40,4 +40,14 @@ describe("FQ", () => {
 
     expect(c.n).toBe(sample.div(3n, 5n));
   });
+
+  it("pow FQ", () => {
+    const sample = new Field(11n);
+
+    const p = 11n;
+    const a = new FQ(p, 3n);
+    const b = a.pow(3n);
+
+    expect(b.n).toBe(sample.mod(3n ** 3n));
+  });
 });

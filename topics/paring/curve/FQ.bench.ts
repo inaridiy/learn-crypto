@@ -18,17 +18,3 @@ group("FQ binary pow", () => {
     A.pow(BIG);
   });
 });
-
-group("FQ just pow", () => {
-  bench("small", () => {
-    A.mod(A.n ** SMALL);
-  });
-  bench("median", () => {
-    A.mod(A.n ** MEDIAN);
-  });
-  bench("big", () => {
-    A.mod(A.n ** BIG);
-  });
-});
-
-run();

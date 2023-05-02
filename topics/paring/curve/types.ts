@@ -1,9 +1,10 @@
 export interface Field<T, TLike> {
+  one(): T;
+  zero(): T;
+  clone(): T;
   extend(value: TLike): T;
   eq(other: TLike): boolean;
   isZero(): boolean;
-  inverse(): T;
-  mod(): T;
 
   add(other: TLike): T;
   sub(other: TLike): T;
