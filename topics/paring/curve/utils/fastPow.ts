@@ -1,9 +1,9 @@
 import { Field } from "../types";
 
-export const fastPow = <T extends Field<any, any>>(filed: T, n: bigint) => {
-  if (n === 0n) return filed.zero();
+export const fastPow = <T>(filed: Field<T, any>, n: bigint): T => {
+  if (n === 0n) return filed.zero() as T;
 
-  let result: T = filed.one();
+  let result = filed.one();
   let base = filed.clone();
   while (n > 0n) {
     if (n % 2n === 1n) result = result.mul(base);
@@ -11,5 +11,5 @@ export const fastPow = <T extends Field<any, any>>(filed: T, n: bigint) => {
     n >>= 1n;
   }
 
-  return result;
+  return result as T;
 };

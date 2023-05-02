@@ -1,8 +1,11 @@
 import { ExtFQFactory } from "./curve/ExtFQ";
+import { EllipticCurve } from "./curve/EllipticCurve";
 
 const q =
   4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787n;
 const fqFactory = new ExtFQFactory(q, [1n, 0n, 1n]);
+
+const curve = new EllipticCurve(fqFactory.from(0n), fqFactory.from([4n, 4n]), fqFactory);
 
 const P1 = fqFactory.from([
   352701069587466618187139116011060144890029952792775240219908644239793785735715026873347600343865175952761926303160n,
@@ -14,6 +17,9 @@ const P2 = fqFactory.from([
   927553665492332455747201965776037880757740193453592970025027978793976877002675564980949289727957565575433344219582n,
 ]);
 
-const P3 = P1.pow(100n);
+const G = {
+  x: P1,
+  y: P2,
+};
 
-console.log(P3.toString());
+console.log(curve.isOnCurve(G));

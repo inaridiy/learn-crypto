@@ -35,6 +35,7 @@ export class Polynomial implements Field<Polynomial, PolynomialLike> {
   zero = (): Polynomial => Polynomial.zero(this.p);
   one = (): Polynomial => Polynomial.one(this.p);
 
+
   clone(): Polynomial {
     return new Polynomial(this.coefficients, this.p);
   }

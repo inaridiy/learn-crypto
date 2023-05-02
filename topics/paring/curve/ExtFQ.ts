@@ -16,8 +16,11 @@ export class ExtFQFactory implements FieldFactory<ExtFQ, ExtFQLike> {
     return new ExtFQ(this.p, this.modPoly, new Polynomial([1n], this.p));
   }
 
-  from(value: PolynomialLike): ExtFQ {
-    return new ExtFQ(this.p, this.modPoly, value);
+  from(value: ExtFQLike | bigint): ExtFQ {
+    if (typeof value === "bigint")
+      return new ExtFQ(this.p, this.modPoly, new Polynomial([value], this.p));
+    else if (value instanceof ExtFQ) return value.clone();
+    else return new ExtFQ(this.p, this.modPoly, value);
   }
 }
 
