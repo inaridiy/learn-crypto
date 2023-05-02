@@ -1,63 +1,85 @@
 import { Polynomial, PolynomialLike } from "./Polynomial";
 import { extGCD } from "./extendedGCD";
 
+export type ExtFQLike = ExtFQ | PolynomialLike;
+
 export class ExtFQ {
   public readonly p: bigint;
   public readonly degree: number;
   public readonly modPoly: Polynomial;
 
-  constructor(p: bigint, modPoly: PolynomialLike) {
+  public readonly value: Polynomial;
+
+  static zero(p: bigint, modPoly: PolynomialLike): ExtFQ {
+    return new ExtFQ(p, modPoly, Polynomial.zero(p));
+  }
+
+  constructor(p: bigint, modPoly: PolynomialLike, value: PolynomialLike) {
     const modPoly_ = Polynomial.mustBePolynomial(modPoly, p);
+    const value_ = Polynomial.mustBePolynomial(value, p);
     if (p !== modPoly_.p) throw new Error("Must be same field");
+    if (p !== value_.p) throw new Error("Must be same field");
 
     this.p = p;
     this.degree = modPoly_.degree();
     this.modPoly = modPoly_;
+    this.value = value_.mod(modPoly_);
+  }
+
+  static mustBeExtFQ(other: ExtFQLike, p: bigint, modPoly: PolynomialLike): ExtFQ {
+    if (other instanceof ExtFQ) return other;
+    else return new ExtFQ(p, modPoly, other);
+  }
+
+  extend(value: PolynomialLike): ExtFQ {
+    const value_ = Polynomial.mustBePolynomial(value, this.p);
+    if (this.p !== value_.p) throw new Error("Must be same field");
+    return new ExtFQ(this.p, this.modPoly, value_);
   }
 
   /**
    *
    * @returns
    */
-  inverse(a: PolynomialLike): Polynomial {
-    const a_ = Polynomial.mustBePolynomial(a, this.p);
-    const [g, x, _] = extGCD(a_, this.modPoly);
+  inverse(): ExtFQ {
+    const [g, x, _] = extGCD(this.value, this.modPoly);
     //公約数が定数項の場合は逆元が存在しない
     if (g.degree() !== 0) throw new Error("Not invertible");
     //定数項が1でない場合は、定数項を1にするために定数項で割って正規化する?
-    else if (g.coefficients[0].n !== 1n) return x.div(g);
+    else if (g.coefficients[0].n !== 1n) return this.extend(x.div(g));
     //定数項が1の場合はそのまま返す
-    else return x;
+    else return this.extend(x);
   }
 
-  mod(a: PolynomialLike): Polynomial {
-    const a_ = Polynomial.mustBePolynomial(a, this.p);
-    return a_.mod(this.modPoly);
+  mod(): ExtFQ {
+    return this.extend(this.value.mod(this.modPoly));
   }
 
-  private _normalize(a: PolynomialLike, b: PolynomialLike): [Polynomial, Polynomial] {
-    const a_ = Polynomial.mustBePolynomial(a, this.p);
-    const b_ = Polynomial.mustBePolynomial(b, this.p);
-    return [a_, b_];
+  add(other: ExtFQLike): ExtFQ {
+    const other_ = ExtFQ.mustBeExtFQ(other, this.p, this.modPoly);
+    const result = this.value.add(other_.value);
+    return this.extend(result);
   }
 
-  add(a: PolynomialLike, b: PolynomialLike): Polynomial {
-    const [a_, b_] = this._normalize(a, b);
-    return a_.add(b_);
+  sub(other: ExtFQLike): ExtFQ {
+    const other_ = ExtFQ.mustBeExtFQ(other, this.p, this.modPoly);
+    const result = this.value.sub(other_.value);
+    return this.extend(result);
   }
 
-  sub(a: PolynomialLike, b: PolynomialLike): Polynomial {
-    const [a_, b_] = this._normalize(a, b);
-    return a_.sub(b_);
+  mul(other: ExtFQLike): ExtFQ {
+    const other_ = ExtFQ.mustBeExtFQ(other, this.p, this.modPoly);
+    const result = this.value.mul(other_.value);
+    return this.extend(result);
   }
 
-  mul(a: PolynomialLike, b: PolynomialLike): Polynomial {
-    const [a_, b_] = this._normalize(a, b);
-    return a_.mul(b_).mod(this.modPoly);
+  div(other: ExtFQLike): ExtFQ {
+    const other_ = ExtFQ.mustBeExtFQ(other, this.p, this.modPoly);
+    const result = this.value.mul(other_.inverse().value);
+    return this.extend(result);
   }
 
-  div(a: PolynomialLike, b: PolynomialLike): Polynomial {
-    const [a_, b_] = this._normalize(a, b);
-    return a_.mul(this.inverse(b_)).mod(this.modPoly);
+  toString(): string {
+    return this.value.toString();
   }
 }
