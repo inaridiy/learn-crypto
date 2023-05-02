@@ -45,7 +45,7 @@ export class EllipticCurve<T, TLike extends T> {
       return this.zero();
     } else {
       const [f3n, f2n] = [this.fq.from(3n), this.fq.from(2n)]; // [3n, 2n];
-      const m = x1.pow(2n).mul(f3n).add(this.a).div(f2n);
+      const m = x1.pow(2n).mul(f3n).add(this.a).div(y1.mul(f2n));
       x3 = m.pow(2n).sub(x1.mul(f2n));
       y3 = m.mul(x1.sub(x3)).sub(y1);
     }

@@ -22,4 +22,6 @@ const G = {
   y: P2,
 };
 
-console.log(curve.isOnCurve(G));
+const P3 = curve.add(G, G);
+
+console.log(P3.x.toString());
