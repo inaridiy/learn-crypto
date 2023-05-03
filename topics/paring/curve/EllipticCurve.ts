@@ -5,7 +5,7 @@ export type PointCoord<T extends Field<any, any> = Field<any, any>> = Readonly<{
   y: T;
 }>;
 
-export class EllipticCurve<T, TLike extends T> {
+export class EllipticCurve<T, TLike> {
   readonly a: Field<T, TLike>;
   readonly b: Field<T, TLike>;
   readonly fq: FieldFactory<T, TLike>;
@@ -51,5 +51,29 @@ export class EllipticCurve<T, TLike extends T> {
     }
 
     return { x: x3, y: y3 };
+  }
+
+  sub(
+    p1: PointCoord<Field<T, TLike>>,
+    p2: PointCoord<Field<T, TLike>>
+  ): PointCoord<Field<T, TLike>> {
+    if (p2.x.isZero() && p2.x.isZero()) return p1;
+    return this.add(p1, {
+      x: p2.x,
+      y: p2.y.mul(this.fq.from(-1n)), // -p2.y
+    });
+  }
+
+  mul(point: PointCoord<Field<T, TLike>>, n: bigint) {
+    if (n < 0n) throw new Error("n must be positive");
+    if (n === 0n) return this.zero();
+
+    let result = this.zero();
+    while (n > 0n) {
+      if (n % 2n === 1n) result = this.add(result, point);
+      point = this.add(point, point);
+      n >>= 1n;
+    }
+    return result;
   }
 }
