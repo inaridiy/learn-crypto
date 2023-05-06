@@ -1,10 +1,9 @@
 import { FQ } from "./FQ";
-import { Field } from "./types";
 import { fastPow } from "./utils/fastPow";
 
 export type PolynomialLike = Polynomial | bigint[] | FQ[];
 
-export class Polynomial implements Field<Polynomial, PolynomialLike> {
+export class Polynomial {
   public readonly p: bigint;
   public readonly coefficients: FQ[];
 
@@ -34,7 +33,6 @@ export class Polynomial implements Field<Polynomial, PolynomialLike> {
   static one = (p: bigint): Polynomial => new Polynomial([FQ.one(p)], p);
   zero = (): Polynomial => Polynomial.zero(this.p);
   one = (): Polynomial => Polynomial.one(this.p);
-
 
   clone(): Polynomial {
     return new Polynomial(this.coefficients, this.p);

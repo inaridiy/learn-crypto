@@ -1,41 +1,39 @@
-import { Field, FieldFactory } from "./types";
+import { ExtFQ, ExtFQLike } from "./ExtFQ";
+import { FieldFactory } from "./types";
 
-export type PointCoord<T extends Field<any, any> = Field<any, any>> = Readonly<{
-  x: T;
-  y: T;
+export type PointCoord = Readonly<{
+  x: ExtFQ;
+  y: ExtFQ;
 }>;
 
-export class EllipticCurve<T, TLike> {
-  readonly a: Field<T, TLike>;
-  readonly b: Field<T, TLike>;
-  readonly fq: FieldFactory<T, TLike>;
+export class EllipticCurve {
+  readonly a: ExtFQ;
+  readonly b: ExtFQ;
+  readonly fq: FieldFactory<ExtFQ, ExtFQLike>;
 
-  zero: () => PointCoord<Field<T, TLike>> = () => ({ x: this.fq.zero(), y: this.fq.zero() });
+  zero: () => PointCoord = () => ({ x: this.fq.zero(), y: this.fq.zero() });
 
-  constructor(a: TLike, b: TLike, fieldFactory: FieldFactory<T, TLike>) {
+  constructor(a: ExtFQLike, b: ExtFQLike, fieldFactory: FieldFactory<ExtFQ, ExtFQLike>) {
     this.a = fieldFactory.from(a);
     this.b = fieldFactory.from(b);
     this.fq = fieldFactory;
   }
 
-  isOnCurve(point: PointCoord<Field<T, TLike>>): boolean {
+  isOnCurve(point: PointCoord): boolean {
     if (point.x.isZero() && point.y.isZero()) return true;
     const left = point.y.pow(2n);
     const right = point.x.pow(3n).add(this.a.mul(point.x)).add(this.b);
     return left.eq(right);
   }
 
-  add(
-    p1: PointCoord<Field<T, TLike>>,
-    p2: PointCoord<Field<T, TLike>>
-  ): PointCoord<Field<T, TLike>> {
+  add(p1: PointCoord, p2: PointCoord): PointCoord {
     if (p1.x.isZero() && p1.y.isZero()) return p2;
     if (p2.x.isZero() && p2.y.isZero()) return p1;
     if (!this.isOnCurve(p1) || !this.isOnCurve(p2)) throw new Error("Points must be on curve");
 
     const { x: x1, y: y1 } = p1;
     const { x: x2, y: y2 } = p2;
-    let x3: Field<T, TLike>, y3: Field<T, TLike>;
+    let x3: ExtFQ, y3: ExtFQ;
 
     if (!x1.eq(x2)) {
       const m = y1.sub(y2).div(x1.sub(x2));
@@ -53,10 +51,7 @@ export class EllipticCurve<T, TLike> {
     return { x: x3, y: y3 };
   }
 
-  sub(
-    p1: PointCoord<Field<T, TLike>>,
-    p2: PointCoord<Field<T, TLike>>
-  ): PointCoord<Field<T, TLike>> {
+  sub(p1: PointCoord, p2: PointCoord): PointCoord {
     if (p2.x.isZero() && p2.x.isZero()) return p1;
     return this.add(p1, {
       x: p2.x,
@@ -64,7 +59,7 @@ export class EllipticCurve<T, TLike> {
     });
   }
 
-  mul(point: PointCoord<Field<T, TLike>>, n: bigint) {
+  mul(point: PointCoord, n: bigint) {
     if (n < 0n) throw new Error("n must be positive");
     if (n === 0n) return this.zero();
 
@@ -75,5 +70,36 @@ export class EllipticCurve<T, TLike> {
       n >>= 1n;
     }
     return result;
+  }
+}
+
+export class CurvePoint {
+  x: ExtFQ;
+  y: ExtFQ;
+  curve: EllipticCurve;
+
+  constructor(x: ExtFQLike, y: ExtFQLike, curve: EllipticCurve) {
+    this.x = curve.fq.from(x);
+    this.y = curve.fq.from(y);
+    this.curve = curve;
+  }
+
+  isOnCurve(): boolean {
+    return this.curve.isOnCurve(this);
+  }
+
+  add(p: CurvePoint): CurvePoint {
+    const { x, y } = this.curve.add(this, p);
+    return new CurvePoint(x, y, this.curve);
+  }
+
+  sub(p: CurvePoint): CurvePoint {
+    const { x, y } = this.curve.sub(this, p);
+    return new CurvePoint(x, y, this.curve);
+  }
+
+  mul(n: bigint): CurvePoint {
+    const { x, y } = this.curve.mul(this, n);
+    return new CurvePoint(x, y, this.curve);
   }
 }

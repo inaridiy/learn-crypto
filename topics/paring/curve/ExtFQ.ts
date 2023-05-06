@@ -1,12 +1,17 @@
 import { Polynomial, PolynomialLike } from "./Polynomial";
 import { extGCD } from "./utils/extendedGCD";
-import { FieldFactory, Field } from "./types";
+import { FieldFactory } from "./types";
 import { fastPow } from "./utils/fastPow";
 
-export type ExtFQLike = ExtFQ | PolynomialLike;
+export type ExtFQLike = ExtFQ | PolynomialLike | bigint;
 
 export class ExtFQFactory implements FieldFactory<ExtFQ, ExtFQLike> {
-  constructor(public readonly p: bigint, public readonly modPoly: PolynomialLike) {}
+  public readonly modPoly: Polynomial;
+
+  constructor(public readonly p: bigint, modPoly: PolynomialLike | bigint) {
+    if (typeof modPoly === "bigint") this.modPoly = new Polynomial([0n, modPoly], p);
+    else this.modPoly = Polynomial.mustBePolynomial(modPoly, p);
+  }
 
   zero(): ExtFQ {
     return ExtFQ.zero(this.p, this.modPoly);
@@ -24,7 +29,7 @@ export class ExtFQFactory implements FieldFactory<ExtFQ, ExtFQLike> {
   }
 }
 
-export class ExtFQ implements Field<ExtFQ, ExtFQLike> {
+export class ExtFQ {
   public readonly p: bigint;
   public readonly degree: number;
   public readonly modPoly: Polynomial;
@@ -45,6 +50,7 @@ export class ExtFQ implements Field<ExtFQ, ExtFQLike> {
 
   static mustBeExtFQ(other: ExtFQLike, p: bigint, modPoly: PolynomialLike): ExtFQ {
     if (other instanceof ExtFQ) return other;
+    else if (typeof other === "bigint") return new ExtFQ(p, modPoly, new Polynomial([other], p));
     else return new ExtFQ(p, modPoly, other);
   }
 

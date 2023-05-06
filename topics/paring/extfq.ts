@@ -14,6 +14,7 @@ const P2 = fqFactory.from([
   927553665492332455747201965776037880757740193453592970025027978793976877002675564980949289727957565575433344219582n,
 ]);
 
-const P3 = P1.pow(100n);
+const P3 = P1.mul(P2); // P1 * P2
+const Recover = P3.div(P2); // P3 / P2
 
-console.log(P3.toString());
+console.log(Recover.eq(P1)); // true

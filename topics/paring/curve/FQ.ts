@@ -1,10 +1,9 @@
-import { Field, FieldFactory } from "./types";
 import { extGCD } from "./utils/extendedGCD";
 import { fastPow } from "./utils/fastPow";
 
 export type FQLike = FQ | bigint;
 
-export class FQFactory implements FieldFactory<FQ, FQLike> {
+export class FQFactory {
   constructor(public readonly p: bigint) {}
 
   zero(): FQ {
@@ -20,7 +19,7 @@ export class FQFactory implements FieldFactory<FQ, FQLike> {
   }
 }
 
-export class FQ implements Field<FQ, FQLike> {
+export class FQ {
   public readonly p: bigint;
   public readonly n: bigint;
 
