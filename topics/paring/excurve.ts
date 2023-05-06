@@ -1,10 +1,10 @@
-import { ExtFQ, ExtFQFactory, ExtFQLike } from "./curve/ExtFQ";
+import { ExtFQFactory } from "./curve/ExtFQ";
 import { CurvePoint, EllipticCurve } from "./curve/EllipticCurve";
 
 const q =
   4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787n;
 
-const FQ = new ExtFQFactory(q, 1n);
+const FQ = new ExtFQFactory(q);
 const FQCurve = new EllipticCurve(0n, 4n, FQ);
 const G1 = new CurvePoint(
   3685416753713387016781088315183077757961620795782546409894578378688607592378376318836054947676345821548104185464507n,

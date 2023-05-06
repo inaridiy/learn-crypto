@@ -8,9 +8,8 @@ export type ExtFQLike = ExtFQ | PolynomialLike | bigint;
 export class ExtFQFactory implements FieldFactory<ExtFQ, ExtFQLike> {
   public readonly modPoly: Polynomial;
 
-  constructor(public readonly p: bigint, modPoly: PolynomialLike | bigint) {
-    if (typeof modPoly === "bigint") this.modPoly = new Polynomial([0n, modPoly], p);
-    else this.modPoly = Polynomial.mustBePolynomial(modPoly, p);
+  constructor(public readonly p: bigint, modPoly: PolynomialLike = [0n, 1n]) {
+    this.modPoly = Polynomial.mustBePolynomial(modPoly, p);
   }
 
   zero(): ExtFQ {
