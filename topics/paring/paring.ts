@@ -1,6 +1,6 @@
 import { ExtFQFactory } from "./curve/ExtFQ";
 import { CurvePoint, EllipticCurve } from "./curve/EllipticCurve";
-import { twist, embedFQ12 } from "./curve/pairing";
+import { twist, embedFQ12, pairing, lineFunction } from "./curve/pairing";
 
 const q =
   4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787n;
@@ -27,7 +27,7 @@ const G2 = new CurvePoint(
   FQ2Curve
 );
 
-const P3 = embedFQ12(G1);
-
-console.log(P3.x.toString());
-console.log(P3.y.toString());
+const P1 = embedFQ12(G1);
+const P2 = twist(G2);
+const P3 = lineFunction(P1, P1, P2);
+console.log(P3.toString());
