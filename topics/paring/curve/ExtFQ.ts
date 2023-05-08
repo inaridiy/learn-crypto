@@ -23,14 +23,16 @@ export class ExtFQFactory implements FieldFactory<ExtFQ, ExtFQLike> {
   from(value: ExtFQLike | bigint): ExtFQ {
     if (typeof value === "bigint")
       return new ExtFQ(this.p, this.modPoly, new Polynomial([value], this.p));
-    else if (value instanceof ExtFQ) return value.clone();
+    else if (value instanceof ExtFQ && value.degree() === this.modPoly.degree())
+      return value.clone();
+    else if (value instanceof ExtFQ) return new ExtFQ(this.p, this.modPoly, value.value);
     else return new ExtFQ(this.p, this.modPoly, value);
   }
 }
 
 export class ExtFQ {
   public readonly p: bigint;
-  public readonly degree: number;
+  private readonly _degree: number;
   public readonly modPoly: Polynomial;
 
   public readonly value: Polynomial;
@@ -42,7 +44,7 @@ export class ExtFQ {
     if (p !== value_.p) throw new Error("Must be same field");
 
     this.p = p;
-    this.degree = modPoly_.degree();
+    this._degree = modPoly_.degree();
     this.modPoly = modPoly_;
     this.value = value_.mod(modPoly_);
   }
@@ -79,10 +81,10 @@ export class ExtFQ {
     return this.value.isZero();
   }
 
-  /**
-   *
-   * @returns
-   */
+  degree(): number {
+    return this._degree;
+  }
+
   inverse(): ExtFQ {
     const [g, x, _] = extGCD(this.value, this.modPoly);
     //公約数が定数項の場合は逆元が存在しない

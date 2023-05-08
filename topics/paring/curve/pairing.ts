@@ -1,12 +1,13 @@
+import { print } from "../../../utils/print";
 import { CurvePoint, PointCoord } from "./EllipticCurve";
-import { FQ, FQ12 } from "./curve-fields";
+import { FQ, FQ12, BLS12_381_FQ12, fieldModulus, curveOrder } from "./bls12-381";
 
 //魔法の数字だぜ！！何をしたいのか全く分からないぜ！！！
 const ateLoopCount = 15132376222941642752n;
 const logAteLoopCount = 62n;
 
 export const embedFQ12 = (P: CurvePoint) => {
-  return new CurvePoint(FQ12.from(P.x), FQ12.from(P.y), P.curve);
+  return new CurvePoint(FQ12.from(P.x), FQ12.from(P.y), BLS12_381_FQ12);
 };
 
 export const twist = (P: CurvePoint) => {
@@ -21,7 +22,7 @@ export const twist = (P: CurvePoint) => {
   const mx = nx.div([0n, 0n, 1n]);
   const my = ny.div([0n, 0n, 0n, 1n]);
 
-  return new CurvePoint(mx, my, P.curve);
+  return new CurvePoint(mx, my, BLS12_381_FQ12);
 };
 
 export const lineFunction = (P1: CurvePoint, P2: CurvePoint, Q: PointCoord) => {
@@ -47,19 +48,19 @@ export const millerLoop = (P: CurvePoint, Q: CurvePoint) => {
 
   let R = Q;
   let f = FQ12.one();
-  for (let i = logAteLoopCount - 1n; i >= 0n; i--) {
+  for (let i = logAteLoopCount; i >= 0n; i--) {
+    // if (i === 62n) console.log(f.toString());
+
     f = f.pow(2n).mul(lineFunction(R, R, P));
     R = R.mul(2n);
+
     if (ateLoopCount & (1n << i)) {
       f = f.mul(lineFunction(R, Q, P));
       R = R.add(Q);
     }
   }
 
-  return f.pow(
-    (P.x.p ** 12n - 1n) %
-      52435875175126190479447740508185965837690552500527637822603658699938581184513n
-  );
+  return f.pow((fieldModulus ** 12n - 1n) / curveOrder);
 };
 
 export const pairing = (P: CurvePoint, Q: CurvePoint) => {
