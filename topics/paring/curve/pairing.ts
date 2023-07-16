@@ -64,5 +64,7 @@ export const millerLoop = (P: CurvePoint, Q: CurvePoint) => {
 };
 
 export const pairing = (P: CurvePoint, Q: CurvePoint) => {
-  return millerLoop(embedFQ12(P), twist(Q));
+  const P_ = P.x.degree() === 12 ? P : P.x.degree() === 2 ? twist(P) : embedFQ12(P);
+  const Q_ = P.x.degree() === 12 ? Q : Q.x.degree() === 2 ? twist(Q) : embedFQ12(Q);
+  return millerLoop(P_, Q_);
 };
