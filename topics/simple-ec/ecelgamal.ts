@@ -17,7 +17,7 @@ const encode = (msg: bigint) => {
   throw new Error("Failed to encode");
 };
 
-const decode = (p: Point) => p.x;
+const decode = (p: Point) => p.x >> 16n;
 
 const encrypt = (sP: Point, m: Point) => {
   const t = random(EllipticCurve.BIG_PRIME - 1n);
