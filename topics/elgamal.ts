@@ -1,22 +1,9 @@
 import { print } from "../utils/print";
 import { random } from "./random";
+import { fastPow, modInverse } from "./math";
 
 const p = 2n ** 127n - 1n; //素数
 const g = 2n; //生成元
-
-const fastPow = (x: bigint, n: bigint, mod: bigint) => {
-  let res = 1n;
-  while (n > 0n) {
-    if (n & 1n) res = (res * x) % mod;
-    x = (x * x) % mod;
-    n >>= 1n;
-  }
-  return res;
-};
-
-const modInverse = (a: bigint, mod: bigint) => {
-  return fastPow(a, mod - 2n, mod);
-};
 
 const encrypt = (sP: bigint, m: bigint) => {
   const t = random(p - 4n) + 2n;

@@ -88,4 +88,8 @@ export class EllipticCurve {
     }
     return result;
   }
+
+  public calcY2(x: bigint): bigint {
+    return this.fp.mod(x ** 3n + this.a * x + this.b);
+  }
 }
