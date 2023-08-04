@@ -1,7 +1,11 @@
 {
   "extends": "@tsconfig/node18",
   "compilerOptions": {
-    "module": "NodeNext"
+    "module": "ESNext",
+    "types": [
+      "vitest/globals",
+      "vitest/importMeta"
+    ]
   },
   "exclude": [
     "node_modules"

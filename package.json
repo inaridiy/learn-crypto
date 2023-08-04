@@ -7,7 +7,7 @@
   "license": "MIT",
   "packageManager": "yarn@3.5.0",
   "scripts": {
-    "test": "jest"
+    "test": "vitest"
   },
   "devDependencies": {
     "@tsconfig/node18": "^1.0.1",
@@ -17,10 +17,14 @@
     "prettier": "^2.8.7",
     "ts-jest": "^29.1.0",
     "tsx": "^3.12.6",
-    "typescript": "^5.0.4"
+    "typescript": "^5.0.4",
+    "vitest": "^0.34.1"
   },
   "dependencies": {
+    "ffjavascript": "^0.2.59",
     "mcl-wasm": "^1.0.6",
-    "mitata": "^0.1.6"
+    "merkletreejs": "^0.3.10",
+    "mitata": "^0.1.6",
+    "poseidon-encryption": "^1.0.2"
   }
 }
