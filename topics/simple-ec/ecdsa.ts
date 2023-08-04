@@ -5,12 +5,7 @@ import { random } from "./../random";
 const BIG_NUM = 2n ** 256n;
 
 const curve = EllipticCurve.SECP256K1;
-const s = 0x83ecb3984a4f9ff03e84d5f9c0d7f888a81833643047acc58eb6431e01d9bac8n;
-const S = curve.multiply(EllipticCurve.SECP256K1_G, s); //公開鍵
-const msg = "こんにちは".split("").reduce((acc, c) => acc * 256n + BigInt(c.charCodeAt(0)), 0n);
 const fr = new Field(0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141n); // 大きい素数
-
-print("State", { s, S, msg });
 
 const sign = (
   curve: EllipticCurve,
@@ -25,9 +20,6 @@ const sign = (
   const r = fr.mod(Q.x);
   return [r, fr.div(r * s + z, k)];
 };
-
-const signature = sign(curve, EllipticCurve.SECP256K1_G, s, msg);
-print("Signature", signature);
 
 const verify = (
   curve: EllipticCurve,
@@ -47,4 +39,19 @@ const verify = (
   return r === fr.mod(Q.x);
 };
 
-print("Verify", { Ok: verify(curve, EllipticCurve.SECP256K1_G, S, msg, signature) });
+if (import.meta.vitest) {
+  it("ecdsa", async () => {
+    const s = 0x83ecb3984a4f9ff03e84d5f9c0d7f888a81833643047acc58eb6431e01d9bac8n;
+    const S = curve.multiply(EllipticCurve.SECP256K1_G, s); //公開鍵
+    const msg = "こんにちは".split("").reduce((acc, c) => acc * 256n + BigInt(c.charCodeAt(0)), 0n);
+
+    print("State", { s, S, msg });
+
+    const signature = sign(curve, EllipticCurve.SECP256K1_G, s, msg);
+    print("Signature", signature);
+
+    print("Verify", { Ok: verify(curve, EllipticCurve.SECP256K1_G, S, msg, signature) });
+
+    expect(verify(curve, EllipticCurve.SECP256K1_G, S, msg, signature)).toEqual(true);
+  });
+}

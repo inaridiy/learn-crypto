@@ -31,19 +31,25 @@ const decrypt = (s: bigint, c1: Point, c2: Point) => {
   return dec;
 };
 
-const s = random(EllipticCurve.BIG_PRIME - 1n);
-const sP = curve.multiply(G, s);
+if (import.meta.vitest) {
+  it("ec elgamal", async () => {
+    const s = random(EllipticCurve.BIG_PRIME - 1n);
+    const sP = curve.multiply(G, s);
 
-const msg = 0x123456789n;
-const encoded = encode(msg);
+    const msg = 0x123456789n;
+    const encoded = encode(msg);
 
-print("State", { s, sP, msg });
+    print("State", { s, sP, msg });
 
-const [c1, c2] = encrypt(sP, encoded);
+    const [c1, c2] = encrypt(sP, encoded);
 
-print("Encrypted", { c1, c2 });
+    print("Encrypted", { c1, c2 });
 
-const dec = decrypt(s, c1, c2);
-const decMsg = decode(dec);
+    const dec = decrypt(s, c1, c2);
+    const decMsg = decode(dec);
 
-print("Decrypted", { dec, decMsg });
+    print("Decrypted", { dec, decMsg });
+
+    expect(decMsg).toEqual(msg);
+  });
+}
