@@ -2,7 +2,8 @@
 
 ## Overview
 
-Repository where inaridiy implements various protocols related to cryptography
+Repository where inaridiy implements various protocols related to cryptography. No library!
+※I also implement PSE assignments in this repository and use the library there as well.
 
 ## Execution
 
