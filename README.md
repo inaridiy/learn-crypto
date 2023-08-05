@@ -37,8 +37,8 @@ npx tsx path/to/file.ts
 
 ### 4. Paring-Based Cryptography
 
-[Check bilinear](./topics/pairing/bilinear.ts)  
-[BLS Signature](./topics/pairing/bls.ts)
+[Check bilinear](./topics/paring/bilinear.ts)  
+[BLS Signature](./topics/paring/bls.ts)
 
 ### 5. Elliptic Curve Cryptography
 
