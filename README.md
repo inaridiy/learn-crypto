@@ -37,19 +37,19 @@ npx tsx path/to/file.ts
 
 ### 4. Paring-Based Cryptography
 
-[Check bilinear](./topics/pairing/bilinear.ts)
+[Check bilinear](./topics/pairing/bilinear.ts)  
 [BLS Signature](./topics/pairing/bls.ts)
 
 ### 5. Elliptic Curve Cryptography
 
 [Elliptic Curve Arithmetic](./topics/simple-ec/EllipticCurve/EllipticCurve.ts)  
-[ECDH Key Exchange](./topics/simple-ec/ecdh.ts)
+[ECDH Key Exchange](./topics/simple-ec/ecdh.ts)  
 [EC Elgamal Encryption](./topics/simple-ec/ecelgamal.ts)  
-[Lifted Elgamal Encryption and additive quasi-homomorphism](./topics/simple-ec/l)
+[Lifted Elgamal Encryption and additive quasi-homomorphism](./topics/simple-ec/l)  
 [ECDSA Digital Signature](./topics/simple-ec/ecdsa.ts)
 
-//Paring-Based Cryptography
-[Check bilinear](./topics/pairing/bilinear.ts)
+//Paring-Based Cryptography  
+[Check bilinear](./topics/pairing/bilinear.ts)  
 [BLS Signature](./topics/pairing/bls.ts)
 
 ## PSE Summer Contribution Program Exercise
