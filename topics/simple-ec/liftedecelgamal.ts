@@ -11,8 +11,10 @@ const encode = (msg: bigint) => {
 
 const decode = (p: Point) => {
   const MaxMsgSize = 2n ** 32n;
-  for (let i = 0n; i < MaxMsgSize; i++) {
-    if (curve.multiply(G, i).x === p.x) return i;
+  let point = G;
+  for (let i = 1n; i < MaxMsgSize; i++) {
+    if (point.x === p.x) return i; //計算量を最適化
+    point = curve.add(point, G);
   }
   throw new Error("Failed to decode");
 };
