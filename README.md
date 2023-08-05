@@ -46,7 +46,7 @@ npx tsx path/to/file.ts
 [Elliptic Curve Arithmetic](./topics/simple-ec/EllipticCurve/EllipticCurve.ts)  
 [ECDH Key Exchange](./topics/simple-ec/ecdh.ts)  
 [EC Elgamal Encryption](./topics/simple-ec/ecelgamal.ts)  
-[Lifted Elgamal Encryption and additive quasi-homomorphism](./topics/simple-ec/l)  
+[Lifted Elgamal Encryption and additive quasi-homomorphism](./topics/simple-ec/liftedecelgamal.ts)  
 [ECDSA Digital Signature](./topics/simple-ec/ecdsa.ts)
 
 //Paring-Based Cryptography  
