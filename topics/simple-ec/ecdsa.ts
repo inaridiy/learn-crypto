@@ -21,6 +21,14 @@ const sign = (
   return [r, fr.div(r * s + z, k)];
 };
 
+const sign2 = (curve: EllipticCurve, G: Point, s: bigint, msg: bigint): [bigint, bigint] => {
+  const z = fr.mod(msg);
+  const k = msg ^ s;
+  const Q = curve.multiply(G, k);
+  const r = fr.mod(Q.x);
+  return [r, fr.div(r * s + z, k)];
+};
+
 const verify = (
   curve: EllipticCurve,
   G: Point,
@@ -48,6 +56,21 @@ if (import.meta.vitest) {
     print("State", { s, S, msg });
 
     const signature = sign(curve, EllipticCurve.SECP256K1_G, s, msg);
+    print("Signature", signature);
+
+    print("Verify", { Ok: verify(curve, EllipticCurve.SECP256K1_G, S, msg, signature) });
+
+    expect(verify(curve, EllipticCurve.SECP256K1_G, S, msg, signature)).toEqual(true);
+  });
+
+  it("ecdsa2", async () => {
+    const s = 0x83ecb3984a4f9ff03e84d5f9c0d7f888a81833643047acc58eb6431e01d9bac8n;
+    const S = curve.multiply(EllipticCurve.SECP256K1_G, s); //公開鍵
+    const msg = "こんにちは".split("").reduce((acc, c) => acc * 256n + BigInt(c.charCodeAt(0)), 0n);
+
+    print("State", { s, S, msg });
+
+    const signature = sign2(curve, EllipticCurve.SECP256K1_G, s, msg);
     print("Signature", signature);
 
     print("Verify", { Ok: verify(curve, EllipticCurve.SECP256K1_G, S, msg, signature) });
