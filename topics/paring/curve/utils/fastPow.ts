@@ -1,7 +1,7 @@
 import { Field } from "../types";
 
 export const fastPow = <T>(filed: Field<T, any>, n: bigint): T => {
-  if (n === 0n) return filed.zero() as T;
+  if (n === 0n) return filed.one() as T;
 
   let result = filed.one();
   let base = filed.clone();

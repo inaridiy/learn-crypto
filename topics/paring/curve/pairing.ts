@@ -1,6 +1,6 @@
 import { print } from "../../../utils/print";
 import { CurvePoint, PointCoord } from "./EllipticCurve";
-import { FQ, FQ12, BLS12_381_FQ12, fieldModulus, curveOrder } from "./bls12-381";
+import { FQ12, BLS12_381_FQ12, fieldModulus, curveOrder } from "./bls12-381";
 
 //魔法の数字だぜ！！何をしたいのか全く分からないぜ！！！
 const ateLoopCount = 15132376222941642752n;

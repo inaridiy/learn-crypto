@@ -1,5 +1,6 @@
 import { EllipticCurve, CurvePoint } from "./EllipticCurve";
 import { ExtFQFactory } from "./ExtFQ";
+import { FQFactory } from "./FQ";
 
 const q =
   4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787n;
@@ -9,13 +10,19 @@ export const fieldModulus = q;
 export const curveOrder =
   52435875175126190479447740508185965837690552500527637822603658699938581184513n;
 
-export const FQ = new ExtFQFactory(q);
+
+
+export const FQ = new FQFactory(q);
+export const FQ1 = new ExtFQFactory(q, [0n, 1n]);
 export const FQ2 = new ExtFQFactory(q, [1n, 0n, 1n]);
 export const FQ12 = new ExtFQFactory(q, [2n, 0n, 0n, 0n, 0n, 0n, -2n, 0n, 0n, 0n, 0n, 0n, 1n]);
 
-export const BLS12_381_FQ = new EllipticCurve(0n, 4n, FQ);
+export const BLS12_381_FQ = new EllipticCurve(0n, 4n, FQ1);
 export const BLS12_381_FQ2 = new EllipticCurve(0n, [4n, 4n], FQ2);
 export const BLS12_381_FQ12 = new EllipticCurve(0n, 4n, FQ12);
+
+export const BLS12_381_FQ_ZERO = new CurvePoint(0n, 0n, BLS12_381_FQ);
+export const BLS12_381_FQ2_ZERO = new CurvePoint([0n, 0n], [0n, 0n], BLS12_381_FQ2);
 
 export const BLS12_381_G1 = new CurvePoint(
   3685416753713387016781088315183077757961620795782546409894578378688607592378376318836054947676345821548104185464507n,

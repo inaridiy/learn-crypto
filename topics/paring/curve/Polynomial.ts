@@ -43,7 +43,7 @@ export class Polynomial {
   }
 
   degree(): number {
-    return this.coefficients.length - 1;
+    return this.coefficients.length - 1
   }
 
   isZero(): boolean {
@@ -155,7 +155,7 @@ export class Polynomial {
     const x_ = FQ.mustBeFQ(x, this.p);
     let result = FQ.zero(this.p);
     for (let i = this.coefficients.length - 1; i >= 0; i--) {
-      result = result.mul(x_).add(this.coefficients[i]);
+      result = result.add(this.coefficients[i].mul(x_.pow(BigInt(i))));
     }
     return result;
   }

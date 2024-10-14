@@ -4,7 +4,7 @@ import { fastPow } from "./utils/fastPow";
 export type FQLike = FQ | bigint;
 
 export class FQFactory {
-  constructor(public readonly p: bigint) {}
+  constructor(public readonly p: bigint) { }
 
   zero(): FQ {
     return FQ.zero(this.p);
@@ -102,6 +102,7 @@ export class FQ {
   }
 
   pow(n: bigint): FQ {
+
     return fastPow(this, n);
   }
 }

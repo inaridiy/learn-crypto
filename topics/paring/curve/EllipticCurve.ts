@@ -52,11 +52,8 @@ export class EllipticCurve {
   }
 
   sub(p1: PointCoord, p2: PointCoord): PointCoord {
-    if (p2.x.isZero() && p2.x.isZero()) return p1;
-    return this.add(p1, {
-      x: p2.x,
-      y: p2.y.mul(this.fq.from(-1n)), // -p2.y
-    });
+    if (p2.x.isZero() && p2.y.isZero()) return p1;
+    return this.add(p1, this.neg(p2));
   }
 
   mul(point: PointCoord, n: bigint) {
@@ -70,6 +67,10 @@ export class EllipticCurve {
       n >>= 1n;
     }
     return result;
+  }
+
+  neg(point: PointCoord): PointCoord {
+    return { x: point.x, y: point.y.mul(this.fq.from(-1n)) };
   }
 }
 
@@ -100,6 +101,11 @@ export class CurvePoint {
 
   mul(n: bigint): CurvePoint {
     const { x, y } = this.curve.mul(this, n);
+    return new CurvePoint(x, y, this.curve);
+  }
+
+  neg(): CurvePoint {
+    const { x, y } = this.curve.neg(this);
     return new CurvePoint(x, y, this.curve);
   }
 }

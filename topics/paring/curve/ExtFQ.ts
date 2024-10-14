@@ -8,7 +8,7 @@ export type ExtFQLike = ExtFQ | PolynomialLike | bigint;
 export class ExtFQFactory implements FieldFactory<ExtFQ, ExtFQLike> {
   public readonly modPoly: Polynomial;
 
-  constructor(public readonly p: bigint, modPoly: PolynomialLike = [0n, 1n]) {
+  constructor(public readonly p: bigint, modPoly: PolynomialLike) {
     this.modPoly = Polynomial.mustBePolynomial(modPoly, p);
   }
 
@@ -32,7 +32,6 @@ export class ExtFQFactory implements FieldFactory<ExtFQ, ExtFQLike> {
 
 export class ExtFQ {
   public readonly p: bigint;
-  private readonly _degree: number;
   public readonly modPoly: Polynomial;
 
   public readonly value: Polynomial;
@@ -44,7 +43,6 @@ export class ExtFQ {
     if (p !== value_.p) throw new Error("Must be same field");
 
     this.p = p;
-    this._degree = modPoly_.degree();
     this.modPoly = modPoly_;
     this.value = value_.mod(modPoly_);
   }
@@ -82,7 +80,7 @@ export class ExtFQ {
   }
 
   degree(): number {
-    return this._degree;
+    return this.modPoly.degree();
   }
 
   inverse(): ExtFQ {
@@ -129,5 +127,10 @@ export class ExtFQ {
 
   toString(): string {
     return this.value.toString();
+  }
+
+  toBigInt(): bigint {
+    if (this.degree() !== 1) throw new Error("Must be degree 1");
+    else return this.value.coefficients[0].n;
   }
 }

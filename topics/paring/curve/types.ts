@@ -1,4 +1,5 @@
 export type FieldFactory<T, TLike> = {
+  p: bigint;
   zero(): T;
   one(): T;
   from(value: bigint): T;
