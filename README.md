@@ -40,6 +40,7 @@ npx tsx path/to/file.ts
 
 [Check bilinear](./topics/paring/bilinear.ts)  
 [BLS Signature](./topics/paring/bls.ts)
+[KZG Commitment](./topics/kzg/kzg.ts)
 
 ### 5. Elliptic Curve Cryptography
 
