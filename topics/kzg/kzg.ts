@@ -57,4 +57,20 @@ if (import.meta.vitest) {
 
     expect(isValid).toBe(true);
   });
+
+  it("KZG homomorphism", () => {
+    const degree = 4;
+    const p1 = new Polynomial([1n, 2n, 3n, 4n], curveOrder);
+    const p2 = new Polynomial([5n, 6n, 7n, 8n], curveOrder);
+
+    const setup = trustedSetup(degree + 1, random(curveOrder));
+
+    const commitment1 = evalWithG1Setup(p1, setup);
+    const commitment2 = evalWithG1Setup(p2, setup);
+
+    const commitment1_2 = evalWithG1Setup(p1.add(p2), setup);
+
+    const combinedCommitment = commitment1.add(commitment2);
+    expect(commitment1_2.eq(combinedCommitment)).toBe(true);  
+  });
 }

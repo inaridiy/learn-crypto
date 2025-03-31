@@ -85,6 +85,10 @@ export class CurvePoint {
     this.curve = curve;
   }
 
+  eq(p: CurvePoint): boolean {
+    return this.x.eq(p.x) && this.y.eq(p.y);
+  }
+
   isOnCurve(): boolean {
     return this.curve.isOnCurve(this);
   }
