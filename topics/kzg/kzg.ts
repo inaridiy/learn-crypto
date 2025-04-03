@@ -71,6 +71,19 @@ if (import.meta.vitest) {
     const commitment1_2 = evalWithG1Setup(p1.add(p2), setup);
 
     const combinedCommitment = commitment1.add(commitment2);
-    expect(commitment1_2.eq(combinedCommitment)).toBe(true);  
+    expect(commitment1_2.eq(combinedCommitment)).toBe(true);
+
+    const a = 17n;
+    const { proof: proof1, y: y1 } = makeProof(p1, a, setup);
+    const { proof: proof2, y: y2 } = makeProof(p2, a, setup);
+    const { proof: proof3, y: y3 } = makeProof(p1.add(p2), a, setup);
+    const isValid1 = verify(proof1, a, y1, commitment1, setup);
+    const isValid2 = verify(proof2, a, y2, commitment2, setup);
+    const isValid3 = verify(proof3, a, y3, commitment1_2, setup);
+
+    expect(isValid1).toBe(true);
+    expect(isValid2).toBe(true);
+    expect(isValid3).toBe(true);
+    expect(y1 + y2).toBe(y3);
   });
 }
