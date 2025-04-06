@@ -43,7 +43,7 @@ export class Polynomial {
   }
 
   degree(): number {
-    return this.coefficients.length - 1
+    return this.coefficients.length - 1;
   }
 
   isZero(): boolean {
@@ -120,6 +120,7 @@ export class Polynomial {
 
     return new Polynomial(result, this.p);
   }
+
   div(other: PolynomialLike): Polynomial {
     const other_ = this.mustBePolynomial(other);
     if (other_.isZero()) throw new Error("Division by zero");
