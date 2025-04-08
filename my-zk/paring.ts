@@ -1,4 +1,12 @@
-import { BLS12_381_FQ12, CURVE_ORDER, FIELD_MODULUS, FQ12, POLY } from "./bls12-381";
+import {
+  BLS12_381_FQ12,
+  BLS12_381_G1,
+  BLS12_381_G2,
+  CURVE_ORDER,
+  FIELD_MODULUS,
+  FQ12,
+  POLY,
+} from "./bls12-381";
 import { EllipticCurvePoint } from "./curve";
 import { ExtendedFiniteField } from "./extended-finite-field";
 
@@ -76,3 +84,19 @@ export const pairing = (
 
   return millerLoop(P_, Q_);
 };
+
+if (import.meta.vitest) {
+  const { test, expect } = import.meta.vitest;
+  test("pairing", () => {
+    const a = 123n;
+    const b = 456n;
+
+    const aP = BLS12_381_G1.mul(a);
+    const bQ = BLS12_381_G2.mul(b);
+
+    const e1 = pairing(BLS12_381_G1, BLS12_381_G2);
+    const e2 = pairing(aP, bQ);
+
+    expect(e1.pow(a * b)).toEqual(e2);
+  });
+}

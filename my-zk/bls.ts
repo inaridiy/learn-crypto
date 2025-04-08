@@ -36,7 +36,6 @@ if (import.meta.vitest) {
     const msg = "hello world";
     const sig = sign(msg, s);
     const verified = verify(msg, sG, sig);
-    print("Verify", { Ok: verified });
 
     expect(verified).toEqual(true);
   });
