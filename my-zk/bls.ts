@@ -1,4 +1,3 @@
-import { print } from "../utils/print";
 import { BLS12_381_G2, BLS12_381_G1 } from "./bls12-381";
 import { EllipticCurvePoint } from "./curve";
 import { ExtendedFiniteField } from "./extended-finite-field";

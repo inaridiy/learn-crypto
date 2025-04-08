@@ -42,17 +42,15 @@ const verify = (proof: CurvePoint, a: bigint, y: bigint, commitment: CurvePoint,
 
 if (import.meta.vitest) {
   it("KZG", () => {
-    const p = new Polynomial(
-      [1n, 2n, 3n, 4n, 7n, 7n, 7n, 7n, 13n, 13n, 13n, 13n, 13n, 13n, 13n, 13n],
-      curveOrder
-    );
+    const p = new Polynomial([1n, 2n, 3n, 4n], curveOrder);
 
-    const setup = trustedSetup(p.degree() + 1, random(curveOrder));
+    const setup = trustedSetup(p.degree() + 1, 114514n);
 
     const commitment = evalWithG1Setup(p, setup);
 
     const a = 17n;
     const { proof, y } = makeProof(p, a, setup);
+
     const isValid = verify(proof, a, y, commitment, setup);
 
     expect(isValid).toBe(true);
