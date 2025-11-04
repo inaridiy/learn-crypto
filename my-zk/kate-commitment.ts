@@ -1,9 +1,9 @@
-import { BLS12_381_G1, BLS12_381_G2, CURVE_ORDER } from "./bls12-381";
-import { EllipticCurvePoint } from "./curve";
-import { ExtendedFiniteField } from "./extended-finite-field";
-import { FiniteField, FiniteFieldFactory } from "./finite-field";
-import { pairing } from "./paring";
-import { Polynomial, PolynomialFactory } from "./polynomial";
+import { BLS12_381_G1, BLS12_381_G2, CURVE_ORDER } from "./curves/bls12-381";
+import { EllipticCurvePoint } from "./primitive/curve";
+import { ExtendedFiniteField } from "./primitive/extended-finite-field";
+import { FiniteField, FiniteFieldFactory } from "./primitive/finite-field";
+import { pairing } from "./primitive/paring";
+import { Polynomial, PolynomialFactory } from "./primitive/polynomial";
 
 export const FF = new FiniteFieldFactory(CURVE_ORDER);
 export const POLY_FOR_KZG = new PolynomialFactory(FF);

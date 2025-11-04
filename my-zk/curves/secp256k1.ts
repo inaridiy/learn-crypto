@@ -1,5 +1,5 @@
-import { EllipticCurve } from "./curve";
-import { FiniteFieldFactory } from "./finite-field";
+import { EllipticCurve } from "../primitive/curve";
+import { FiniteFieldFactory } from "../primitive/finite-field";
 
 export const FQ = new FiniteFieldFactory(2n ** 256n - 2n ** 32n - 977n);
 

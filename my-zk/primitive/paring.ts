@@ -6,7 +6,7 @@ import {
   FIELD_MODULUS,
   FQ12,
   POLY,
-} from "./bls12-381";
+} from "../curves/bls12-381";
 import { EllipticCurvePoint } from "./curve";
 import { ExtendedFiniteField } from "./extended-finite-field";
 

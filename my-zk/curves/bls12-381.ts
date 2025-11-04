@@ -1,7 +1,7 @@
-import { EllipticCurve } from "./curve";
-import { FiniteFieldFactory } from "./finite-field";
-import { PolynomialFactory } from "./polynomial";
-import { ExtendedFiniteFieldFactory } from "./extended-finite-field";
+import { EllipticCurve } from "../primitive/curve";
+import { FiniteFieldFactory } from "../primitive/finite-field";
+import { PolynomialFactory } from "../primitive/polynomial";
+import { ExtendedFiniteFieldFactory } from "../primitive/extended-finite-field";
 
 export const FIELD_MODULUS =
   4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787n;

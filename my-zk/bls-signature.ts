@@ -1,7 +1,7 @@
-import { BLS12_381_G2, BLS12_381_G1 } from "./bls12-381";
-import { EllipticCurvePoint } from "./curve";
-import { ExtendedFiniteField } from "./extended-finite-field";
-import { pairing } from "./paring";
+import { BLS12_381_G2, BLS12_381_G1 } from "./curves/bls12-381";
+import { EllipticCurvePoint } from "./primitive/curve";
+import { ExtendedFiniteField } from "./primitive/extended-finite-field";
+import { pairing } from "./primitive/paring";
 
 const s = 0x83ecb3984a4f9ff03e84d5f9c0d7f888a81833643047acc58eb6431e01d9bac8n;
 const sG = BLS12_381_G2.mul(s); //公開鍵
@@ -13,13 +13,13 @@ const hash = (msg: string) => {
   return BLS12_381_G1.mul(hashedBigInt);
 };
 
-const sign = (msg: string, s: bigint) => {
+export const sign = (msg: string, s: bigint) => {
   const hashed = hash(msg);
   const sig = hashed.mul(s);
   return sig;
 };
 
-const verify = (
+export const verify = (
   msg: string,
   sG: EllipticCurvePoint<ExtendedFiniteField>,
   sig: EllipticCurvePoint<ExtendedFiniteField>
