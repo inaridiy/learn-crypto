@@ -1,75 +1,84 @@
-import { Field, FieldFactory } from "./interface";
+import { Field, FieldElement } from "./interface";
 import { extendedGCDBigint, modBigint, pow } from "./math";
 
-export class FiniteFieldFactory implements FieldFactory<FiniteField, bigint> {
+export class FiniteField implements Field<FiniteFieldElement, bigint> {
   constructor(public readonly p: bigint) {}
 
-  zero(): FiniteField {
-    return new FiniteField(this, this.p, 0n);
+  zero() {
+    return new FiniteFieldElement(this, this.p, 0n);
   }
 
-  one(): FiniteField {
-    return new FiniteField(this, this.p, 1n);
+  one() {
+    return new FiniteFieldElement(this, this.p, 1n);
   }
 
-  from(value: bigint): FiniteField {
-    return new FiniteField(this, this.p, value);
+  from(value: bigint | FiniteFieldElement) {
+    if (value instanceof FiniteFieldElement) return value.clone();
+    return new FiniteFieldElement(this, this.p, value);
   }
 }
 
-export class FiniteField implements Field<FiniteField, bigint> {
-  public readonly factory: FiniteFieldFactory;
+export class FiniteFieldElement implements FieldElement<FiniteFieldElement, bigint> {
+  public readonly structure: FiniteField;
+
+  public readonly CommutativeRingElement = true;
+  public readonly FieldElement = true;
+
   public readonly p: bigint;
   public readonly n: bigint;
 
-  constructor(factory: FiniteFieldFactory, p: bigint, n: bigint) {
-    this.factory = factory;
+  constructor(structure: FiniteField, p: bigint, n: bigint) {
+    this.structure = structure;
     this.p = p;
     this.n = modBigint(n, this.p);
   }
 
-  eq(other: FiniteField): boolean {
+  eq(other: FiniteFieldElement): boolean {
     return this.n === other.n;
   }
 
-  clone(): FiniteField {
-    return new FiniteField(this.factory, this.p, this.n);
+  clone() {
+    return new FiniteFieldElement(this.structure, this.p, this.n);
   }
 
   isZero(): boolean {
     return this.n === 0n;
   }
 
-  add(other: FiniteField): FiniteField {
-    return new FiniteField(this.factory, this.p, this.n + other.n);
+  isOne(): boolean {
+    return this.n === 0n;
   }
 
-  sub(other: FiniteField): FiniteField {
-    return new FiniteField(this.factory, this.p, this.n - other.n);
+  add(other: FiniteFieldElement) {
+    return new FiniteFieldElement(this.structure, this.p, this.n + other.n);
   }
 
-  mul(other: FiniteField): FiniteField {
-    return new FiniteField(this.factory, this.p, this.n * other.n);
+  sub(other: FiniteFieldElement) {
+    return new FiniteFieldElement(this.structure, this.p, this.n - other.n);
   }
 
-  scale(n: bigint): FiniteField {
-    return new FiniteField(this.factory, this.p, this.n * n);
+  mul(other: FiniteFieldElement) {
+    return new FiniteFieldElement(this.structure, this.p, this.n * other.n);
   }
 
-  inverse(): FiniteField {
+  scale(n: bigint) {
+    return new FiniteFieldElement(this.structure, this.p, this.n * n);
+  }
+
+  inverse() {
     const [gcd, x] = extendedGCDBigint(this.n, this.p);
     if (gcd !== 1n) throw new Error("No inverse");
-    return new FiniteField(this.factory, this.p, x);
+    return new FiniteFieldElement(this.structure, this.p, x);
   }
 
-  div(other: FiniteField): FiniteField {
+  div(other: FiniteFieldElement) {
     if (other.n === 0n) throw new Error("Division by zero");
     const otherInv = other.inverse();
     return this.mul(otherInv);
   }
 
-  pow(n: bigint): FiniteField {
-    return pow<FiniteField>(this, n);
+  pow(n: bigint) {
+    return pow<FiniteFieldElement>(this, n);
   }
 }
 
@@ -78,7 +87,7 @@ if (import.meta.vitest) {
 
   describe("FiniteField", () => {
     const p = 13n;
-    const F = new FiniteFieldFactory(p);
+    const F = new FiniteField(p);
     const zero = F.zero();
     const one = F.one();
     const a = F.from(7n);

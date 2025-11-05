@@ -1,12 +1,12 @@
-import { Field } from "./interface";
+import { CommutativeRingElement, EuclidRingElement } from "./interface";
 
 export const modBigint = (a: bigint, m: bigint) => {
   const res = a % m;
   return res >= 0n ? res : res + m;
 };
 
-export const pow = <T extends Field<T, unknown>>(field: T, n: bigint) => {
-  let result = field.factory.one();
+export const pow = <T extends CommutativeRingElement<T, TLike>, TLike = T>(field: T, n: bigint) => {
+  let result = field.structure.one();
   let base = field.clone();
   while (n > 0n) {
     if (n % 2n === 1n) result = result.mul(base);
@@ -16,10 +16,10 @@ export const pow = <T extends Field<T, unknown>>(field: T, n: bigint) => {
   return result;
 };
 
-export const extendedGCD = <T extends Field<T, unknown>>(a: T, b: T) => {
+export const extendedGCD = <T extends EuclidRingElement<T, TLike>, TLike = T>(a: T, b: T) => {
   let [r1, r2] = [a, b];
-  let [s1, s2] = [a.factory.one(), a.factory.zero()];
-  let [t1, t2] = [a.factory.zero(), a.factory.one()];
+  let [s1, s2] = [a.structure.one(), a.structure.zero()];
+  let [t1, t2] = [a.structure.zero(), a.structure.one()];
 
   while (!r2.isZero()) {
     const q = r1.div(r2);

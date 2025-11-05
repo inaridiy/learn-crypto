@@ -1,59 +1,71 @@
-import { FiniteField, FiniteFieldFactory } from "./finite-field";
-import { Field, FieldFactory } from "./interface";
+import { FiniteField } from "./finite-field";
+import {
+  CommutativeRing,
+  CommutativeRingElement,
+  EuclidRingElement,
+  FieldElement,
+} from "./interface";
 import { pow } from "./math";
 
-export class PolynomialFactory implements FieldFactory<Polynomial, FiniteField[] | bigint[]> {
-  constructor(public readonly coeffFactory: FiniteFieldFactory) {}
+export class PolynomialFactory<T extends FieldElement<T, TLike>, TLike>
+  implements CommutativeRing<Polynomial<T, TLike>, T[] | TLike[]>
+{
+  constructor(public readonly coeffField: CommutativeRing<T, TLike>) {}
 
-  zero(): Polynomial {
-    return new Polynomial(this, [this.coeffFactory.zero()]);
+  zero() {
+    return new Polynomial(this, [this.coeffField.zero()]);
   }
 
-  one(): Polynomial {
-    return new Polynomial(this, [this.coeffFactory.one()]);
+  one() {
+    return new Polynomial(this, [this.coeffField.one()]);
   }
 
-  from(coeffs: FiniteField[] | bigint[]): Polynomial {
-    if (typeof coeffs[0] === "bigint") {
-      return new Polynomial(
-        this,
-        coeffs.map((c) => this.coeffFactory.from(c as bigint))
-      );
-    }
-    return new Polynomial(this, coeffs as FiniteField[]);
+  from(value: T[] | TLike[] | Polynomial<T, TLike>) {
+    if (value instanceof Polynomial) return value;
+    return new Polynomial(this, value.map(this.coeffField.from));
   }
 }
 
-export class Polynomial implements Field<Polynomial, FiniteField[]> {
-  public readonly factory: PolynomialFactory;
-  public readonly coeffFactory: FiniteFieldFactory;
-  public readonly coeffs: FiniteField[];
+export class Polynomial<T extends FieldElement<T, TLike>, TLike>
+  implements
+    CommutativeRingElement<Polynomial<T, TLike>, T[]>,
+    EuclidRingElement<Polynomial<T, TLike>, T[]>
+{
+  public readonly structure: PolynomialFactory<T, TLike>;
 
-  constructor(factory: PolynomialFactory, coeffs: FiniteField[]) {
-    this.factory = factory;
-    this.coeffFactory = factory.coeffFactory;
+  public readonly CommutativeRingElement = true;
+  public readonly EuclidRingElement = true;
+
+  public readonly coeffs: T[];
+
+  constructor(factory: PolynomialFactory<T, TLike>, coeffs: T[]) {
+    this.structure = factory;
 
     const normalized = [...coeffs];
     while (normalized.length > 0 && normalized[normalized.length - 1].isZero()) {
       normalized.pop();
     }
     if (normalized.length === 0) {
-      this.coeffs = [this.coeffFactory.zero()];
+      this.coeffs = [this.structure.coeffField.zero()];
     } else {
       this.coeffs = normalized;
     }
   }
 
   degree(): number {
-    if (this.isZero()) return -1;
+    if (this.isZero()) return -1; //これでいいっけ
     return this.coeffs.length - 1;
   }
 
-  isZero(): boolean {
-    return this.coeffs.length === 1 && this.coeffs[0].isZero();
+  eval(x: T) {
+    let result = this.structure.coeffField.zero();
+    for (let i = this.coeffs.length - 1; i >= 0; i--) {
+      result = result.mul(x).add(this.coeffs[i]);
+    }
+    return result;
   }
 
-  eq(other: Polynomial): boolean {
+  eq(other: Polynomial<T, TLike>) {
     if (this.coeffs.length !== other.coeffs.length) return false;
     for (let i = 0; i < this.coeffs.length; i++) {
       if (!this.coeffs[i].eq(other.coeffs[i])) return false;
@@ -61,45 +73,48 @@ export class Polynomial implements Field<Polynomial, FiniteField[]> {
     return true;
   }
 
-  clone(): Polynomial {
-    return new Polynomial(
-      this.factory,
-      this.coeffs.map((c) => c.clone())
-    );
+  clone() {
+    return this.structure.from(this.coeffs.map((c) => c.clone()));
   }
 
-  add(other: Polynomial): Polynomial {
+  isZero(): boolean {
+    return this.coeffs.length === 1 && this.coeffs[0].isZero();
+  }
+
+  isOne(): boolean {
+    return this.coeffs.length === 1 && this.coeffs[0].isOne();
+  }
+
+  add(other: Polynomial<T, TLike>) {
     const maxLength = Math.max(this.coeffs.length, other.coeffs.length);
-    const result: FiniteField[] = [];
+    const result: T[] = [];
 
     for (let i = 0; i < maxLength; i++) {
-      const a = this.coeffs[i] ?? this.coeffFactory.zero();
-      const b = other.coeffs[i] ?? this.coeffFactory.zero();
+      const a = this.coeffs[i] ?? this.structure.coeffField.zero();
+      const b = other.coeffs[i] ?? this.structure.coeffField.zero();
       result.push(a.add(b));
     }
 
-    return new Polynomial(this.factory, result);
+    return this.structure.from(result);
   }
 
-  sub(other: Polynomial): Polynomial {
+  sub(other: Polynomial<T, TLike>) {
     const maxLength = Math.max(this.coeffs.length, other.coeffs.length);
-    const result: FiniteField[] = [];
+    const result: T[] = [];
 
     for (let i = 0; i < maxLength; i++) {
-      const a = this.coeffs[i] ?? this.coeffFactory.zero();
-      const b = other.coeffs[i] ?? this.coeffFactory.zero();
+      const a = this.coeffs[i] ?? this.structure.coeffField.zero();
+      const b = other.coeffs[i] ?? this.structure.coeffField.zero();
       result.push(a.sub(b));
     }
-
-    return new Polynomial(this.factory, result);
+    return this.structure.from(result);
   }
 
-  mul(other: Polynomial): Polynomial {
-    if (this.isZero() || other.isZero()) {
-      return this.factory.zero();
-    }
+  mul(other: Polynomial<T, TLike>) {
+    if (this.isZero() || other.isZero()) return this.structure.zero();
+
     const resultDegree = this.degree() + other.degree();
-    const result = Array(resultDegree + 1).fill(this.coeffFactory.zero());
+    const result = Array(resultDegree + 1).fill(this.structure.coeffField.zero());
 
     for (let i = 0; i < this.coeffs.length; i++) {
       if (this.coeffs[i].isZero()) continue;
@@ -108,28 +123,31 @@ export class Polynomial implements Field<Polynomial, FiniteField[]> {
       }
     }
 
-    return new Polynomial(this.factory, result);
+    return this.structure.from(result);
   }
 
-  scale(n: bigint): Polynomial {
-    return new Polynomial(
-      this.factory,
-      this.coeffs.map((c) => c.scale(n))
-    );
+  scale(n: bigint) {
+    return this.structure.from(this.coeffs.map((c) => c.scale(n)));
   }
 
-  div(other: Polynomial): Polynomial {
+  pow(n: bigint) {
+    return pow<Polynomial<T, TLike>, T[]>(this, n);
+  }
+
+  // 体上の多項式固有の演算？
+
+  div(other: Polynomial<T, TLike>): Polynomial<T, TLike> {
     if (other.isZero()) throw new Error("Division by zero");
-    if (this.isZero()) return this.factory.zero();
-    if (this.degree() < other.degree()) return this.factory.zero();
+    if (this.isZero()) return this.structure.zero();
+    if (this.degree() < other.degree()) return this.structure.zero();
 
     if (other.degree() === 0) {
       const inv = other.coeffs[0].inverse();
       const coeffes = this.coeffs.map((c) => c.mul(inv));
-      return new Polynomial(this.factory, coeffes);
+      return this.structure.from(coeffes);
     }
 
-    let quotient = this.factory.zero();
+    let quotient = this.structure.zero();
     let remainder = this.clone();
     const divisorLeadCoeffInv = other.coeffs[other.degree()].inverse();
 
@@ -137,9 +155,9 @@ export class Polynomial implements Field<Polynomial, FiniteField[]> {
       const degreeDiff = remainder.degree() - other.degree();
       const coeff = remainder.coeffs[remainder.degree()].mul(divisorLeadCoeffInv);
 
-      const monomialCoefficients = Array(degreeDiff + 1).fill(this.coeffFactory.zero());
+      const monomialCoefficients = Array(degreeDiff + 1).fill(this.structure.coeffField.zero());
       monomialCoefficients[degreeDiff] = coeff;
-      const monomial = new Polynomial(this.factory, monomialCoefficients);
+      const monomial = this.structure.from(monomialCoefficients);
 
       quotient = quotient.add(monomial);
       remainder = remainder.sub(monomial.mul(other));
@@ -148,12 +166,12 @@ export class Polynomial implements Field<Polynomial, FiniteField[]> {
     return quotient;
   }
 
-  mod(other: Polynomial): Polynomial {
+  mod(other: Polynomial<T, TLike>): Polynomial<T, TLike> {
     if (other.isZero()) throw new Error("Modulo by zero polynomial");
-    if (this.isZero()) return this.factory.zero();
+    if (this.isZero()) return this.structure.zero();
     if (this.degree() < other.degree()) return this.clone();
 
-    if (other.degree() === 0) return this.factory.zero();
+    if (other.degree() === 0) return this.structure.zero();
 
     let remainder = this.clone();
     const divisorLeadCoeffInv = other.coeffs[other.degree()].inverse();
@@ -161,32 +179,19 @@ export class Polynomial implements Field<Polynomial, FiniteField[]> {
     while (!remainder.isZero() && remainder.degree() >= other.degree()) {
       const degreeDiff = remainder.degree() - other.degree();
       const coeff = remainder.coeffs[remainder.degree()].mul(divisorLeadCoeffInv);
-      const monomialCoefficients = Array(degreeDiff + 1).fill(this.coeffFactory.zero());
+      const monomialCoefficients = Array(degreeDiff + 1).fill(this.structure.coeffField.zero());
       monomialCoefficients[degreeDiff] = coeff;
-      const monomial = new Polynomial(this.factory, monomialCoefficients);
+      const monomial = this.structure.from(monomialCoefficients);
       remainder = remainder.sub(monomial.mul(other));
     }
 
-    // ループ終了時の remainder が剰余
     return remainder;
-  }
-
-  pow(n: bigint): Polynomial {
-    return pow<Polynomial>(this, n);
-  }
-
-  eval(x: FiniteField): FiniteField {
-    let result = this.coeffFactory.zero();
-    for (let i = this.coeffs.length - 1; i >= 0; i--) {
-      result = result.mul(x).add(this.coeffs[i]);
-    }
-    return result;
   }
 }
 
 if (import.meta.vitest) {
   const { describe, test, expect } = import.meta.vitest;
-  const F = new FiniteFieldFactory(13n);
+  const F = new FiniteField(13n);
   const PF = new PolynomialFactory(F);
 
   describe("Polynomial", () => {

@@ -1,88 +1,102 @@
-import { Field, FieldFactory } from "./interface";
+import { FiniteFieldElement } from "./finite-field";
+import { Field, FieldElement } from "./interface";
 import { extendedGCD, pow } from "./math";
 import { Polynomial } from "./polynomial";
 
-export class ExtendedFiniteFieldFactory implements FieldFactory<ExtendedFiniteField, Polynomial> {
-  constructor(public readonly mod: Polynomial) {}
+type PolyOnFF = Polynomial<FiniteFieldElement, bigint | FiniteFieldElement>;
 
-  zero(): ExtendedFiniteField {
-    return new ExtendedFiniteField(this, this.mod, this.mod.factory.zero());
+export class ExtendedFiniteField implements Field<ExtendedFiniteFieldElement, PolyOnFF> {
+  constructor(public readonly p: PolyOnFF) {}
+
+  zero() {
+    return new ExtendedFiniteFieldElement(this, this.p, this.p.structure.zero());
   }
 
-  one(): ExtendedFiniteField {
-    return new ExtendedFiniteField(this, this.mod, this.mod.factory.one());
+  one() {
+    return new ExtendedFiniteFieldElement(this, this.p, this.p.structure.one());
   }
 
-  from(value: Polynomial): ExtendedFiniteField {
-    return new ExtendedFiniteField(this, this.mod, value);
+  from(value: ExtendedFiniteFieldElement | PolyOnFF) {
+    if (value instanceof ExtendedFiniteFieldElement) return value;
+    return new ExtendedFiniteFieldElement(this, this.p, value);
   }
 }
 
-export class ExtendedFiniteField implements Field<ExtendedFiniteField, Polynomial> {
-  public readonly factory: ExtendedFiniteFieldFactory;
-  public readonly mod: Polynomial;
-  public readonly n: Polynomial;
+export class ExtendedFiniteFieldElement
+  implements FieldElement<ExtendedFiniteFieldElement, PolyOnFF>
+{
+  public readonly structure: ExtendedFiniteField;
 
-  constructor(factory: ExtendedFiniteFieldFactory, mod: Polynomial, n: Polynomial) {
-    this.factory = factory;
-    this.mod = mod;
-    this.n = n.mod(this.mod);
+  public readonly CommutativeRingElement = true;
+  public readonly FieldElement = true;
+
+  public readonly p: PolyOnFF;
+  public readonly n: PolyOnFF;
+
+  constructor(structure: ExtendedFiniteField, p: PolyOnFF, n: PolyOnFF) {
+    this.structure = structure;
+    this.p = p;
+    this.n = n.mod(this.p);
   }
 
-  eq(other: ExtendedFiniteField): boolean {
+  eq(other: ExtendedFiniteFieldElement): boolean {
     return this.n.eq(other.n);
   }
 
-  clone(): ExtendedFiniteField {
-    return new ExtendedFiniteField(this.factory, this.mod, this.n);
+  clone(): ExtendedFiniteFieldElement {
+    return this.structure.from(this.n.clone());
   }
 
   isZero(): boolean {
     return this.n.isZero();
   }
 
-  inverse(): ExtendedFiniteField {
-    const [g, x, _] = extendedGCD(this.n, this.mod);
+  isOne(): boolean {
+    return this.n.isOne();
+  }
+
+  add(other: ExtendedFiniteFieldElement) {
+    return this.structure.from(this.n.add(other.n));
+  }
+
+  sub(other: ExtendedFiniteFieldElement) {
+    return this.structure.from(this.n.sub(other.n));
+  }
+
+  mul(other: ExtendedFiniteFieldElement) {
+    return this.structure.from(this.n.mul(other.n));
+  }
+
+  scale(n: bigint) {
+    return this.structure.from(this.n.scale(n));
+  }
+
+  inverse() {
+    const [g, x, _] = extendedGCD(this.n, this.p);
     if (g.degree() !== 0) throw new Error("Not invertible");
-    else if (g.coeffs[0].n !== 1n) return new ExtendedFiniteField(this.factory, this.mod, x.div(g));
-    else return new ExtendedFiniteField(this.factory, this.mod, x);
+    else if (g.coeffs[0].n !== 1n) return this.structure.from(x.div(g));
+    else return this.structure.from(x);
   }
 
-  add(other: ExtendedFiniteField): ExtendedFiniteField {
-    return new ExtendedFiniteField(this.factory, this.mod, this.n.add(other.n));
-  }
-
-  sub(other: ExtendedFiniteField): ExtendedFiniteField {
-    return new ExtendedFiniteField(this.factory, this.mod, this.n.sub(other.n));
-  }
-
-  mul(other: ExtendedFiniteField): ExtendedFiniteField {
-    return new ExtendedFiniteField(this.factory, this.mod, this.n.mul(other.n));
-  }
-
-  div(other: ExtendedFiniteField): ExtendedFiniteField {
+  div(other: ExtendedFiniteFieldElement) {
     return this.mul(other.inverse());
   }
 
-  scale(n: bigint): ExtendedFiniteField {
-    return new ExtendedFiniteField(this.factory, this.mod, this.n.scale(n));
-  }
-
-  pow(n: bigint): ExtendedFiniteField {
-    return pow<ExtendedFiniteField>(this, n);
+  pow(n: bigint) {
+    return pow<ExtendedFiniteFieldElement>(this, n);
   }
 }
 
 if (import.meta.vitest) {
   const { describe, test, expect } = import.meta.vitest;
-  const { FiniteFieldFactory } = await import("./finite-field");
+  const { FiniteField } = await import("./finite-field");
   const { PolynomialFactory } = await import("./polynomial");
 
   // GF(2^3) over GF(2) using irreducible polynomial x^3 + x + 1
-  const F2 = new FiniteFieldFactory(2n);
+  const F2 = new FiniteField(2n);
   const PF2 = new PolynomialFactory(F2);
   const modPoly = PF2.from([1n, 1n, 0n, 1n]); // x^3 + x + 1
-  const EFF = new ExtendedFiniteFieldFactory(modPoly);
+  const EFF = new ExtendedFiniteField(modPoly);
 
   // Elements represented as polynomials in 'a', where a^3 + a + 1 = 0
   const zero = EFF.zero(); // 0
@@ -144,20 +158,6 @@ if (import.meta.vitest) {
       expect(a.mul(one).eq(a)).toBe(true);
       expect(a.mul(zero).eq(zero)).toBe(true);
     });
-
-    // Inverse and Division require extended Euclidean algorithm for polynomials, which is not implemented here.
-    // Skipping div and inverse tests for now.
-    /*
-    test("inverse", () => {
-      // Find inverse of 'a'
-      // Need Extended Euclidean Algo for Polynomials
-    });
-
-    test("div", () => {
-      // (a^2+a) / a = a+1
-      // Need polynomial division or multiplication by inverse
-    });
-    */
 
     test("scale (field is F2^n, so scaling by bigint n means repeated addition)", () => {
       // Scale by 0 -> zero
