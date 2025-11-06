@@ -21,9 +21,6 @@ export class FiniteField implements Field<FiniteFieldElement, bigint> {
 export class FiniteFieldElement implements FieldElement<FiniteFieldElement, bigint> {
   public readonly structure: FiniteField;
 
-  public readonly CommutativeRingElement = true;
-  public readonly FieldElement = true;
-
   public readonly p: bigint;
   public readonly n: bigint;
 
@@ -46,7 +43,7 @@ export class FiniteFieldElement implements FieldElement<FiniteFieldElement, bigi
   }
 
   isOne(): boolean {
-    return this.n === 0n;
+    return this.n === 1n;
   }
 
   add(other: FiniteFieldElement) {
@@ -65,6 +62,10 @@ export class FiniteFieldElement implements FieldElement<FiniteFieldElement, bigi
     return new FiniteFieldElement(this.structure, this.p, this.n * n);
   }
 
+  negate() {
+    return new FiniteFieldElement(this.structure, this.p, -this.n);
+  }
+
   inverse() {
     const [gcd, x] = extendedGCDBigint(this.n, this.p);
     if (gcd !== 1n) throw new Error("No inverse");
@@ -75,6 +76,18 @@ export class FiniteFieldElement implements FieldElement<FiniteFieldElement, bigi
     if (other.n === 0n) throw new Error("Division by zero");
     const otherInv = other.inverse();
     return this.mul(otherInv);
+  }
+
+  quotient(other: FiniteFieldElement) {
+    return this.div(other);
+  }
+
+  remainder(_: FiniteFieldElement) {
+    return this.structure.zero();
+  }
+
+  divmod(other: FiniteFieldElement) {
+    return [this.div(other), this.structure.zero()] as const;
   }
 
   pow(n: bigint) {

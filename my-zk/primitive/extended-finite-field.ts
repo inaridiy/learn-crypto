@@ -71,6 +71,10 @@ export class ExtendedFiniteFieldElement
     return this.structure.from(this.n.scale(n));
   }
 
+  negate() {
+    return this.structure.from(this.n.negate());
+  }
+
   inverse() {
     const [g, x, _] = extendedGCD(this.n, this.p);
     if (g.degree() !== 0) throw new Error("Not invertible");
@@ -80,6 +84,18 @@ export class ExtendedFiniteFieldElement
 
   div(other: ExtendedFiniteFieldElement) {
     return this.mul(other.inverse());
+  }
+
+  quotient(other: ExtendedFiniteFieldElement) {
+    return this.div(other);
+  }
+
+  remainder(_: ExtendedFiniteFieldElement) {
+    return this.structure.zero();
+  }
+
+  divmod(other: ExtendedFiniteFieldElement) {
+    return [this.div(other), this.structure.zero()] as const;
   }
 
   pow(n: bigint) {

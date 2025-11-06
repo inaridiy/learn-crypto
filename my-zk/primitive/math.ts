@@ -1,4 +1,4 @@
-import { CommutativeRingElement, EuclidRingElement } from "./interface";
+import { CommutativeRingElement, EuclideanRingElement } from "./interface";
 
 export const modBigint = (a: bigint, m: bigint) => {
   const res = a % m;
@@ -16,14 +16,14 @@ export const pow = <T extends CommutativeRingElement<T, TLike>, TLike = T>(field
   return result;
 };
 
-export const extendedGCD = <T extends EuclidRingElement<T, TLike>, TLike = T>(a: T, b: T) => {
+export const extendedGCD = <T extends EuclideanRingElement<T, TLike>, TLike = T>(a: T, b: T) => {
   let [r1, r2] = [a, b];
   let [s1, s2] = [a.structure.one(), a.structure.zero()];
   let [t1, t2] = [a.structure.zero(), a.structure.one()];
 
   while (!r2.isZero()) {
-    const q = r1.div(r2);
-    [r1, r2] = [r2, r1.sub(q.mul(r2))];
+    const [q, r] = r1.divmod(r2);
+    [r1, r2] = [r2, r];
     [s1, s2] = [s2, s1.sub(q.mul(s2))];
     [t1, t2] = [t2, t1.sub(q.mul(t2))];
   }

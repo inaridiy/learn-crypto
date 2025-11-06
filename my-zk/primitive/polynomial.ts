@@ -2,7 +2,8 @@ import { FiniteField } from "./finite-field";
 import {
   CommutativeRing,
   CommutativeRingElement,
-  EuclidRingElement,
+  EuclideanRingElement,
+  Field,
   FieldElement,
 } from "./interface";
 import { pow } from "./math";
@@ -10,7 +11,7 @@ import { pow } from "./math";
 export class PolynomialFactory<T extends FieldElement<T, TLike>, TLike>
   implements CommutativeRing<Polynomial<T, TLike>, T[] | TLike[]>
 {
-  constructor(public readonly coeffField: CommutativeRing<T, TLike>) {}
+  constructor(public readonly coeffField: Field<T, TLike>) {}
 
   zero() {
     return new Polynomial(this, [this.coeffField.zero()]);
@@ -29,12 +30,9 @@ export class PolynomialFactory<T extends FieldElement<T, TLike>, TLike>
 export class Polynomial<T extends FieldElement<T, TLike>, TLike>
   implements
     CommutativeRingElement<Polynomial<T, TLike>, T[]>,
-    EuclidRingElement<Polynomial<T, TLike>, T[]>
+    EuclideanRingElement<Polynomial<T, TLike>, T[]>
 {
   public readonly structure: PolynomialFactory<T, TLike>;
-
-  public readonly CommutativeRingElement = true;
-  public readonly EuclidRingElement = true;
 
   public readonly coeffs: T[];
 
@@ -130,13 +128,17 @@ export class Polynomial<T extends FieldElement<T, TLike>, TLike>
     return this.structure.from(this.coeffs.map((c) => c.scale(n)));
   }
 
+  negate() {
+    return this.structure.from(this.coeffs.map((c) => c.negate()));
+  }
+
   pow(n: bigint) {
-    return pow<Polynomial<T, TLike>, T[]>(this, n);
+    return pow<Polynomial<T, TLike>>(this, n);
   }
 
   // 体上の多項式固有の演算？
 
-  div(other: Polynomial<T, TLike>): Polynomial<T, TLike> {
+  quotient(other: Polynomial<T, TLike>): Polynomial<T, TLike> {
     if (other.isZero()) throw new Error("Division by zero");
     if (this.isZero()) return this.structure.zero();
     if (this.degree() < other.degree()) return this.structure.zero();
@@ -166,7 +168,7 @@ export class Polynomial<T extends FieldElement<T, TLike>, TLike>
     return quotient;
   }
 
-  mod(other: Polynomial<T, TLike>): Polynomial<T, TLike> {
+  remainder(other: Polynomial<T, TLike>): Polynomial<T, TLike> {
     if (other.isZero()) throw new Error("Modulo by zero polynomial");
     if (this.isZero()) return this.structure.zero();
     if (this.degree() < other.degree()) return this.clone();
@@ -186,6 +188,20 @@ export class Polynomial<T extends FieldElement<T, TLike>, TLike>
     }
 
     return remainder;
+  }
+
+  divmod(other: Polynomial<T, TLike>) {
+    const q = this.quotient(other);
+    const r = this.remainder(other);
+    return [q, r] as const;
+  }
+
+  div(other: Polynomial<T, TLike>) {
+    return this.quotient(other);
+  }
+
+  mod(other: Polynomial<T, TLike>) {
+    return this.remainder(other);
   }
 }
 
