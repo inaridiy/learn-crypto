@@ -7,28 +7,6 @@ import { pairing } from "../primitive/paring";
 import { R1CSConstraints, StructuralWitness, isSatisfied, toWitnessVector } from "./r1cs";
 import { ECPointCyclicGroupOnExtendedFF } from "../primitive/elliptic-curve";
 
-/**
- * @fileoverview Pinocchioプロトコルの実装。
- * 参考記事: https://zenn.dev/qope/articles/f94b37ff2d9541
- * この実装はzk-SNARKの一種であるPinocchioプロトコルを提供する。
- * Pinocchioプロトコルは、ある計算が正しく行われたことを、計算の詳細（秘匿情報）を明かすことなく、
- * コンパクトな証明（proof）を用いて検証可能にする技術である。
- *
- * プロトコルは主に3つのステップから構成される：
- * 1. Trusted Setup（信頼できる第三者によるセットアップ）:
- *    計算回路に依存する公開パラメータ（評価鍵と検証鍵）を生成する。
- *    このステップは一度だけ行われ、生成されたパラメータは再利用可能。
- *    `trustedSetup`関数がこれに相当する。
- *
- * 2. Prove（証明の生成）:
- *    Prover（証明者）が、公開情報と秘匿情報（witness）を用いて、計算が正しく行われたことの証明（proof）を生成する。
- *    `prove`関数がこれに相当する。
- *
- * 3. Verify（証明の検証）:
- *    Verifier（検証者）が、公開情報、証明、検証鍵を用いて、証明が正しいかを検証する。
- *    `verify`関数がこれに相当する。
- */
-
 // Pinocchioプロトコルでは、G1とG2という2つの異なる巡回群の点を用いる。
 // これはペアリング演算 e(g1, g2) を行うためである。
 export type PinocchioPoint = {
@@ -330,13 +308,6 @@ const buildSeriesEvaluation = (
   return acc;
 };
 
-// ゼロ点が含まれている場合にペアリング計算が失敗するのを防ぐラッパー関数。
-// 点がゼロの場合、ペアリングの結果は乗法単位元(1)となる。
-const safePairing = (p: ECPointCyclicGroupOnExtendedFF, q: ECPointCyclicGroupOnExtendedFF) => {
-  if (p.isZero() || q.isZero()) return FQ12.one();
-  return pairing(p, q);
-};
-
 /**
  * Prove: witnessを用いて証明を生成する。
  * @param r1cs - R1CS。
@@ -459,33 +430,33 @@ export const verify = (
 
   // 1. h(x)が正しく構築されたかの検証 (Knowledge of Coefficient)
   // e(E(αh), E(1)) == e(E(h), E(α))
-  const pairingAlphaLeft = safePairing(proof.alphaH.g1, vk.tOne.g2);
-  const pairingAlphaRight = safePairing(proof.h.g1, vk.tAlpha.g2);
+  const pairingAlphaLeft = pairing(proof.alphaH.g1, vk.tOne.g2);
+  const pairingAlphaRight = pairing(proof.h.g1, vk.tAlpha.g2);
   if (!pairingAlphaLeft.eq(pairingAlphaRight)) return false;
 
   // 2. v_mid(x)が正しく構築されたかの検証 (Knowledge of Coefficient)
   // e(E(βa*v_mid), E(γ)) == e(E(v_mid), E(βa*γ))
-  const pairingBetaVLeft = safePairing(proof.betaV.g1, vk.tGamma.g2);
-  const pairingBetaVRight = safePairing(proof.vMid.g1, vk.tBetaAgamma.g2);
+  const pairingBetaVLeft = pairing(proof.betaV.g1, vk.tGamma.g2);
+  const pairingBetaVRight = pairing(proof.vMid.g1, vk.tBetaAgamma.g2);
   if (!pairingBetaVLeft.eq(pairingBetaVRight)) return false;
 
   // 3. w_mid(x)が正しく構築されたかの検証 (Knowledge of Coefficient)
   // e(E(βb*w_mid), E(γ)) == e(E(w_mid), E(βb*γ))
-  const pairingBetaWLeft = safePairing(proof.betaW.g1, vk.tGamma.g2);
-  const pairingBetaWRight = safePairing(proof.wMid.g1, vk.tBetaBgamma.g2);
+  const pairingBetaWLeft = pairing(proof.betaW.g1, vk.tGamma.g2);
+  const pairingBetaWRight = pairing(proof.wMid.g1, vk.tBetaBgamma.g2);
   if (!pairingBetaWLeft.eq(pairingBetaWRight)) return false;
 
   // 4. y_mid(x)が正しく構築されたかの検証 (Knowledge of Coefficient)
   // e(E(βc*y_mid), E(γ)) == e(E(y_mid), E(βc*γ))
-  const pairingBetaYLeft = safePairing(proof.betaY.g1, vk.tGamma.g2);
-  const pairingBetaYRight = safePairing(proof.yMid.g1, vk.tBetaCgamma.g2);
+  const pairingBetaYLeft = pairing(proof.betaY.g1, vk.tGamma.g2);
+  const pairingBetaYRight = pairing(proof.yMid.g1, vk.tBetaCgamma.g2);
   if (!pairingBetaYLeft.eq(pairingBetaYRight)) return false;
 
   // 5. メインの制約 v(s)w(s) - y(s) = h(s)t(s) の検証
   // ペアリングの双線形性を用いて変形し、 e(v,w) / e(y,1) == e(h,t) をチェックする。
-  const lhs = safePairing(vAggregate.g1, wAggregate.g2); // e(E(v(s)), E(w(s)))
-  const rhs = safePairing(proof.h.g1, vk.tTarget.g2); // e(E(h(s)), E(t(s)))
-  const denominator = safePairing(yAggregate.g1, vk.tOne.g2); // e(E(y(s)), E(1))
+  const lhs = pairing(vAggregate.g1, wAggregate.g2); // e(E(v(s)), E(w(s)))
+  const rhs = pairing(proof.h.g1, vk.tTarget.g2); // e(E(h(s)), E(t(s)))
+  const denominator = pairing(yAggregate.g1, vk.tOne.g2); // e(E(y(s)), E(1))
   if (!lhs.div(denominator).eq(rhs)) return false;
 
   // 全ての検証をパスした場合のみ、trueを返す。
