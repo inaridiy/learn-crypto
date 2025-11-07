@@ -37,16 +37,7 @@ export const isSatisfied = <F extends FieldElement<F, any>>(
   const width = witnessVector.length;
   const zero = witness.one.structure.zero();
 
-  const dotProduct = (row: F[] | undefined, rowIndex: number, label: string) => {
-    if (!row) {
-      throw new Error(`Missing row ${rowIndex} in matrix ${label}`);
-    }
-    if (row.length !== width) {
-      throw new Error(
-        `Matrix ${label} row ${rowIndex} has width ${row.length}, expected ${width}`
-      );
-    }
-
+  const dotProduct = (row: F[]) => {
     let acc = zero;
     for (let col = 0; col < width; col++) {
       const coeff = row[col];
@@ -61,9 +52,9 @@ export const isSatisfied = <F extends FieldElement<F, any>>(
   };
 
   for (let i = 0; i < constraintCount; i++) {
-    const left = dotProduct(matrixA[i], i, "A");
-    const right = dotProduct(matrixB[i], i, "B");
-    const out = dotProduct(matrixC[i], i, "C");
+    const left = dotProduct(matrixA[i]);
+    const right = dotProduct(matrixB[i]);
+    const out = dotProduct(matrixC[i]);
     if (!left.mul(right).eq(out)) return false;
   }
 
@@ -83,7 +74,11 @@ if (import.meta.vitest) {
     c: [row([0, 0, 0, 1])],
   };
 
-  const buildWitness = (x: number, y: number, z: number): StructuralWitness<FiniteFieldElement> => ({
+  const buildWitness = (
+    x: number,
+    y: number,
+    z: number
+  ): StructuralWitness<FiniteFieldElement> => ({
     one: field.one(),
     inputs: [toFF(x)],
     outputs: [toFF(y)],
