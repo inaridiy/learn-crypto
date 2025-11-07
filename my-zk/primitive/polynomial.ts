@@ -139,8 +139,6 @@ export class Polynomial<T extends FieldElement<T, TLike>, TLike>
     return pow<Polynomial<T, TLike>>(this, n);
   }
 
-  // 体上の多項式固有の演算？
-
   quotient(other: Polynomial<T, TLike>): Polynomial<T, TLike> {
     if (other.isZero()) throw new Error("Division by zero");
     if (this.isZero()) return this.structure.zero();

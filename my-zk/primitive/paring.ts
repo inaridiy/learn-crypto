@@ -7,7 +7,7 @@ import {
   FQ12,
   POLY,
 } from "../curves/bls12-381";
-import { ECPointCyclicGroupOnExtendedFF, ECPointOnExtendedFF } from "./elliptic-curve";
+import { ECPointOnExtendedFF } from "./elliptic-curve";
 
 const ATE_LOOP_COUNT = 15132376222941642752n;
 const LOG_ATE_LOOP_COUNT = 62n;
@@ -67,7 +67,7 @@ export const millerLoop = (P: ECPointOnExtendedFF, Q: ECPointOnExtendedFF) => {
   return f.pow((FIELD_MODULUS ** 12n - 1n) / CURVE_ORDER);
 };
 
-export const pairing = (P: ECPointCyclicGroupOnExtendedFF, Q: ECPointCyclicGroupOnExtendedFF) => {
+export const pairing = (P: ECPointOnExtendedFF, Q: ECPointOnExtendedFF) => {
   const P_ = P.structure.a.p.degree() === 2 ? twist(P) : embedFQ12(P);
   const Q_ = Q.structure.a.p.degree() === 2 ? twist(Q) : embedFQ12(Q);
 

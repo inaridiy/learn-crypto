@@ -1,16 +1,16 @@
 import { BLS12_381_G1, BLS12_381_G2, CURVE_ORDER } from "./curves/bls12-381";
-import { EllipticCurvePoint } from "./primitive/curve";
+import { ECPointOnExtendedFF } from "./primitive/elliptic-curve";
 import { ExtendedFiniteField } from "./primitive/extended-finite-field";
-import { FiniteField, FiniteFieldFactory } from "./primitive/finite-field";
+import { FiniteField, FiniteFieldElement } from "./primitive/finite-field";
 import { pairing } from "./primitive/paring";
-import { Polynomial, PolynomialFactory } from "./primitive/polynomial";
+import { PolynomialFactory, PolynomialOnFF } from "./primitive/polynomial";
 
-export const FF = new FiniteFieldFactory(CURVE_ORDER);
+export const FF = new FiniteField(CURVE_ORDER);
 export const POLY_FOR_KZG = new PolynomialFactory(FF);
 
 export type TrustedSetup = {
-  g1: EllipticCurvePoint<ExtendedFiniteField>;
-  g2: EllipticCurvePoint<ExtendedFiniteField>;
+  g1: ECPointOnExtendedFF;
+  g2: ECPointOnExtendedFF;
 }[];
 
 export const makeTrustedSetup = (n: number, seed: bigint): TrustedSetup => {
@@ -18,37 +18,40 @@ export const makeTrustedSetup = (n: number, seed: bigint): TrustedSetup => {
   let s = 1n;
   for (let i = 0n; i < n; i++) {
     setup.push({
-      g1: BLS12_381_G1.mul(s % CURVE_ORDER),
-      g2: BLS12_381_G2.mul(s % CURVE_ORDER),
+      g1: BLS12_381_G1.generator().scale(s % CURVE_ORDER),
+      g2: BLS12_381_G2.generator().scale(s % CURVE_ORDER),
     });
     s = s * seed;
   }
   return setup;
 };
 
-const commitWithG1 = (p: Polynomial, setup: TrustedSetup) => {
+const commitWithG1 = (p: PolynomialOnFF, setup: TrustedSetup) => {
   const { coeffs } = p;
   return coeffs
-    .map((coeff, index) => setup[index].g1.mul(coeff.n))
+    .map((coeff, index) => setup[index].g1.scale(coeff.n))
     .reduce((acc, curr) => acc.add(curr));
 };
 
-const makeProof = (p: Polynomial, a: FiniteField, setup: TrustedSetup) => {
+const makeProof = (p: PolynomialOnFF, a: FiniteFieldElement, setup: TrustedSetup) => {
   const y = p.eval(a);
-  const qx = p.sub(POLY_FOR_KZG.from([y])).div(POLY_FOR_KZG.from([-a.n, 1n]));
+  const qx = p.sub(POLY_FOR_KZG.from([y])).quotient(POLY_FOR_KZG.from([-a.n, 1n]));
   const proof = commitWithG1(qx, setup);
   return { proof, y };
 };
 
 const verify = (
-  proof: EllipticCurvePoint<ExtendedFiniteField>,
-  a: FiniteField,
-  y: FiniteField,
-  commitment: EllipticCurvePoint<ExtendedFiniteField>,
+  proof: ECPointOnExtendedFF,
+  a: FiniteFieldElement,
+  y: FiniteFieldElement,
+  commitment: ECPointOnExtendedFF,
   setup: TrustedSetup
 ) => {
-  const left = pairing(proof, setup[1].g2.sub(BLS12_381_G2.mul(a.n)));
-  const right = pairing(commitment.sub(BLS12_381_G1.mul(y.n)), BLS12_381_G2);
+  const left = pairing(proof, setup[1].g2.sub(BLS12_381_G2.generator().scale(a.n)));
+  const right = pairing(
+    commitment.sub(BLS12_381_G1.generator().scale(y.n)),
+    BLS12_381_G2.generator()
+  );
   return left.eq(right);
 };
 
