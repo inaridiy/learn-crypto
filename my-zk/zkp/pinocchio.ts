@@ -166,7 +166,7 @@ export type PinocchioProof = {
  * @returns 評価鍵、検証鍵、メタデータを含むセットアップオブジェクト。
  */
 export const trustedSetup = (r1cs: R1CSConstraints<FiniteFieldElement>): PinocchioSetup => {
-  // R1CSの行列A, B, Cを多項式v_k(x), w_k(x), y_k(x)に変換する。
+  // R1CSの行列A, B, Cをラグランジュ補完で多項式v_k(x), w_k(x), y_k(x)に変換する。
   const [aps, bps, cps] = [r1cs.a, r1cs.b, r1cs.c].map((v) =>
     matrixToPolynomials(r1cs.structure, v)
   );
@@ -187,7 +187,7 @@ export const trustedSetup = (r1cs: R1CSConstraints<FiniteFieldElement>): Pinocch
   // G1とG2の生成元を取得。
   const [g1, g2] = [BLS12_381_G1.generator(), BLS12_381_G2.generator()];
   // 有限体の要素 v を、G1とG2上の点 E(v) = (v*g1, v*g2) にエンコードする関数。
-  const setupPoint = (v: FiniteFieldElement): PinocchioPoint => ({
+  const encode = (v: FiniteFieldElement): PinocchioPoint => ({
     g1: g1.scale(v.n),
     g2: g2.scale(v.n),
   });
@@ -197,35 +197,35 @@ export const trustedSetup = (r1cs: R1CSConstraints<FiniteFieldElement>): Pinocch
 
   // 検証鍵(VK)の一部を生成する。
   // これらは証明の検証に必要となる。
-  const tOne = setupPoint(r1cs.structure.one()); // E(1)
-  const tAlpha = setupPoint(alpha); // E(α)
-  const tGamma = setupPoint(gamma); // E(γ)
-  const tBetaAgamma = setupPoint(gamma.mul(betaA)); // E(γ*βa)
-  const tBetaBgamma = setupPoint(gamma.mul(betaB)); // E(γ*βb)
-  const tBetaCgamma = setupPoint(gamma.mul(betaC)); // E(γ*βc)
+  const tOne = encode(r1cs.structure.one()); // E(1)
+  const tAlpha = encode(alpha); // E(α)
+  const tGamma = encode(gamma); // E(γ)
+  const tBetaAgamma = encode(gamma.mul(betaA)); // E(γ*βa)
+  const tBetaBgamma = encode(gamma.mul(betaB)); // E(γ*βb)
+  const tBetaCgamma = encode(gamma.mul(betaC)); // E(γ*βc)
 
   // 評価鍵(EK)の一部を生成する。
   // これらはProverがh(s)を計算するために必要。
-  const ts = ss.map((value) => setupPoint(value)); // [E(s), E(s^2), ...]
-  const tAlphaS = ss.map((value) => setupPoint(alpha.mul(value))); // [E(αs), E(αs^2), ...]
+  const ts = ss.map((value) => encode(value)); // [E(s), E(s^2), ...]
+  const tAlphaS = ss.map((value) => encode(alpha.mul(value))); // [E(αs), E(αs^2), ...]
 
   // 各多項式を秘密の点 s で評価し、その結果をエンコードする。
-  const tas = aps.map((p) => setupPoint(p.eval(s))); // [E(v_0(s)), E(v_1(s)), ...]
-  const tbs = bps.map((p) => setupPoint(p.eval(s))); // [E(w_0(s)), E(w_1(s)), ...]
-  const tcs = cps.map((p) => setupPoint(p.eval(s))); // [E(y_0(s)), E(y_1(s)), ...]
+  const tas = aps.map((p) => encode(p.eval(s))); // [E(v_0(s)), E(v_1(s)), ...]
+  const tbs = bps.map((p) => encode(p.eval(s))); // [E(w_0(s)), E(w_1(s)), ...]
+  const tcs = cps.map((p) => encode(p.eval(s))); // [E(y_0(s)), E(y_1(s)), ...]
 
   // Knowledge of Coefficient (KC) Assumptionのための値を生成する。
   // Proverが中間変数の多項式を正しく構築したことを検証するために使用する。
-  const tBetaAas = aps.map((p) => setupPoint(p.eval(s).mul(betaA)));
-  const tBetaBbs = bps.map((p) => setupPoint(p.eval(s).mul(betaB)));
-  const tBetaCcs = cps.map((p) => setupPoint(p.eval(s).mul(betaC)));
+  const tBetaAas = aps.map((p) => encode(p.eval(s).mul(betaA)));
+  const tBetaBbs = bps.map((p) => encode(p.eval(s).mul(betaB)));
+  const tBetaCcs = cps.map((p) => encode(p.eval(s).mul(betaC)));
 
   // ターゲット多項式を s で評価し、エンコードする。
   const targetEval = targetPoly.eval(s);
-  const tTarget = setupPoint(targetEval); // E(t(s))
-  const tBetaAtTarget = setupPoint(targetEval.mul(betaA));
-  const tBetaBtTarget = setupPoint(targetEval.mul(betaB));
-  const tBetaCtTarget = setupPoint(targetEval.mul(betaC));
+  const tTarget = encode(targetEval); // E(t(s))
+  const tBetaAtTarget = encode(targetEval.mul(betaA));
+  const tBetaBtTarget = encode(targetEval.mul(betaB));
+  const tBetaCtTarget = encode(targetEval.mul(betaC));
 
   const midStart = r1cs.index.output + 1; // witnessにおける中間変数の開始位置
 
@@ -362,8 +362,6 @@ export const prove = (
   // witnessが正しければ、余り(remainder)はゼロになるはず。
   if (!remainder.isZero()) throw new Error("Constraint polynomial is not divisible by target");
 
-  const hCoeffs = hPoly.coeffs;
-
   // 評価鍵(EK)を用いて、証明の各要素を計算する。
   // これらはすべて秘密の点 s における評価値をエンコードしたものである。
   // Proverは s を知らないが、EKのおかげでこれらの値を計算できる。
@@ -375,6 +373,8 @@ export const prove = (
   const betaVPoint = linearCombinePoints(ek.tBetaAasMid, midCoeffs); // E(βa*v_mid(s))
   const betaWPoint = linearCombinePoints(ek.tBetaBbsMid, midCoeffs); // E(βb*w_mid(s))
   const betaYPoint = linearCombinePoints(ek.tBetaCcsMid, midCoeffs); // E(βc*y_mid(s))
+
+  const hCoeffs = hPoly.coeffs;
 
   // h(s) と α*h(s) の評価値をエンコード
   const hPoint = buildSeriesEvaluation(hCoeffs, vk.tOne, ek.ts); // E(h(s))
@@ -425,8 +425,6 @@ export const verify = (
   const vAggregate = pointAdd(pointAdd(vk.tA0, vIOPoint), proof.vMid);
   const wAggregate = pointAdd(pointAdd(vk.tB0, wIOPoint), proof.wMid);
   const yAggregate = pointAdd(pointAdd(vk.tC0, yIOPoint), proof.yMid);
-
-  // --- ここからペアリングを用いた一連の検証 ---
 
   // 1. h(x)が正しく構築されたかの検証 (Knowledge of Coefficient)
   // e(E(αh), E(1)) == e(E(h), E(α))
