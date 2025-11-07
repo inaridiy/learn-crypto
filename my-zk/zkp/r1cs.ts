@@ -2,6 +2,8 @@ import { FieldElement } from "../primitive/interface";
 import { FiniteField, FiniteFieldElement } from "../primitive/finite-field";
 
 export type R1CSConstraints<F extends FieldElement<F, any>> = {
+  structure: F["structure"];
+  index: { one: 0; input: number; output: number };
   a: F[][];
   b: F[][];
   c: F[][];
@@ -64,41 +66,43 @@ export const isSatisfied = <F extends FieldElement<F, any>>(
 if (import.meta.vitest) {
   const { describe, it, expect } = import.meta.vitest;
   const field = new FiniteField(17n);
-  const toFF = (value: number | bigint) =>
-    field.from(typeof value === "bigint" ? value : BigInt(value));
-  const row = (coeffs: Array<number | bigint>): FiniteFieldElement[] => coeffs.map(toFF);
+  // const toFF = (value: number | bigint) =>
+  //   field.from(typeof value === "bigint" ? value : BigInt(value));
+  const row = (coeffs: bigint[]): FiniteFieldElement[] => coeffs.map((v) => field.from(v));
 
   const r1cs: R1CSConstraints<FiniteFieldElement> = {
-    a: [row([0, 1, 0, 0])],
-    b: [row([0, 0, 1, 0])],
-    c: [row([0, 0, 0, 1])],
+    structure: field,
+    index: { one: 0, input: 1, output: 2 },
+    a: [row([0n, 1n, 0n, 0n])],
+    b: [row([0n, 0n, 1n, 0n])],
+    c: [row([0n, 0n, 0n, 1n])],
   };
 
   const buildWitness = (
-    x: number,
-    y: number,
-    z: number
+    x: bigint,
+    y: bigint,
+    z: bigint
   ): StructuralWitness<FiniteFieldElement> => ({
     one: field.one(),
-    inputs: [toFF(x)],
-    outputs: [toFF(y)],
-    intermediates: [toFF(z)],
+    inputs: [field.from(x)],
+    outputs: [field.from(y)],
+    intermediates: [field.from(z)],
   });
 
   describe("isSatisfied", () => {
     it("returns true when an R1CS witness meets all constraints", () => {
-      const witness = buildWitness(3, 4, 12);
+      const witness = buildWitness(3n, 4n, 12n);
       expect(isSatisfied(r1cs, witness)).toBe(true);
     });
 
     it("returns false when the witness violates a constraint", () => {
-      const witness = buildWitness(3, 4, 10);
+      const witness = buildWitness(3n, 4n, 10n);
       expect(isSatisfied(r1cs, witness)).toBe(false);
     });
 
     it("throws when the witness does not start with the constant one", () => {
-      const witness = buildWitness(2, 5, 10);
-      witness.one = toFF(0);
+      const witness = buildWitness(2n, 5n, 10n);
+      witness.one = field.from(0n);
       expect(() => isSatisfied(r1cs, witness)).toThrow("Witness must include the constant 1");
     });
   });

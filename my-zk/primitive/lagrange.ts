@@ -1,9 +1,9 @@
 import { FiniteField, FiniteFieldElement } from "./finite-field";
-import { PolynomialFactory } from "./polynomial";
+import { PolynomialFactory, PolynomialOnFF } from "./polynomial";
 
 export const lagrangeInterpolationFF = (
   factory: PolynomialFactory<FiniteFieldElement, bigint>,
-  points: [FiniteFieldElement, FiniteFieldElement][]
+  points: (readonly [FiniteFieldElement, FiniteFieldElement])[]
 ) => {
   if (points.length === 0) return factory.zero();
 
@@ -27,6 +27,26 @@ export const lagrangeInterpolationFF = (
   });
 
   return basisPolynomials.reduce((acc, poly) => acc.add(poly), factory.zero());
+};
+
+export const matrixToPolynomials = (
+  field: FiniteField,
+  matrix: FiniteFieldElement[][]
+): PolynomialOnFF[] => {
+  if (matrix.length === 0) return [];
+
+  const width = matrix[0].length;
+  const factory = new PolynomialFactory(field);
+  const evaluationPoints = matrix.map((_, idx) => field.from(BigInt(idx + 1)));
+
+  return Array.from({ length: width }, (_, column) => {
+    const samples = matrix.map((row, rowIndex) => {
+      const value = row[column] ?? field.zero();
+      return [evaluationPoints[rowIndex], value] as const;
+    });
+
+    return lagrangeInterpolationFF(factory, samples);
+  });
 };
 
 if (import.meta.vitest) {
