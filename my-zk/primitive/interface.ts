@@ -132,13 +132,13 @@ export interface EuclideanRingElement<
  * 体 (Field) を表す構造。体はユークリッド環でもある。
  */
 export interface Field<TElement extends FieldElement<TElement, TLike>, TLike = unknown>
-  extends EuclideanRing<TElement, TLike> {}
+  extends CommutativeRing<TElement, TLike> {}
 
 /**
  * 体の元。ゼロ元以外で除算が可能。
  */
 export interface FieldElement<TSelf extends FieldElement<TSelf, TLike>, TLike = unknown>
-  extends EuclideanRingElement<TSelf, TLike> {
+  extends CommutativeRingElement<TSelf, TLike> {
   readonly structure: Field<TSelf, TLike>;
 
   /** 乗法の逆元: 1 / this */

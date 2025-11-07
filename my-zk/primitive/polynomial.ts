@@ -1,4 +1,4 @@
-import { FiniteField } from "./finite-field";
+import { FiniteField, FiniteFieldElement } from "./finite-field";
 import {
   CommutativeRing,
   CommutativeRingElement,
@@ -23,7 +23,10 @@ export class PolynomialFactory<T extends FieldElement<T, TLike>, TLike>
 
   from(value: T[] | TLike[] | Polynomial<T, TLike>) {
     if (value instanceof Polynomial) return value;
-    return new Polynomial(this, value.map(this.coeffField.from));
+    return new Polynomial(
+      this,
+      value.map((v) => this.coeffField.from(v))
+    );
   }
 }
 
@@ -195,15 +198,9 @@ export class Polynomial<T extends FieldElement<T, TLike>, TLike>
     const r = this.remainder(other);
     return [q, r] as const;
   }
-
-  div(other: Polynomial<T, TLike>) {
-    return this.quotient(other);
-  }
-
-  mod(other: Polynomial<T, TLike>) {
-    return this.remainder(other);
-  }
 }
+
+export type PolynomialOnFF = Polynomial<FiniteFieldElement, bigint | FiniteFieldElement>;
 
 if (import.meta.vitest) {
   const { describe, test, expect } = import.meta.vitest;
@@ -265,26 +262,26 @@ if (import.meta.vitest) {
       expect(p1.scale(3n).eq(expected)).toBe(true);
     });
 
-    test("div", () => {
+    test("quotient", () => {
       const p_dividend = PF.from([4n, 0n, 9n, 2n]); // 2x^3 + 9x^2 + 4
       const p_divisor = PF.from([4n, 5n]); // 5x + 4
       const expected_quotient = PF.from([1n, 2n, 3n]); // 3x^2 + 2x + 1
-      const quotient = p_dividend.div(p_divisor);
+      const quotient = p_dividend.quotient(p_divisor);
       // Due to potential floating point issues in manual calculation, verify by multiplication
       // quotient * p_divisor + remainder = p_dividend
-      const remainder = p_dividend.mod(p_divisor);
+      const remainder = p_dividend.remainder(p_divisor);
       const check = quotient.mul(p_divisor).add(remainder);
       // Use a direct check for division result (quotient)
-      const q = p_dividend.div(p_divisor);
+      const q = p_dividend.quotient(p_divisor);
       expect(q.eq(expected_quotient)).toBe(true); // Direct check
 
       // Test division by constant
       const p_const = PF.from([2n]); // Constant polynomial 2
       const expected_div_const = PF.from([7n, 1n, 8n]); // (3x^2 + 2x + 1) / 2 mod 13 = (3x^2+2x+1)*inv(2)= (3x^2+2x+1)*7 = 21x^2+14x+7 = 8x^2+x+7
-      expect(p1.div(p_const).eq(expected_div_const)).toBe(true);
+      expect(p1.quotient(p_const).eq(expected_div_const)).toBe(true);
 
-      expect(() => p1.div(zero)).toThrow("Division by zero");
-      expect(p1.div(p1).eq(one)).toBe(true);
+      expect(() => p1.quotient(zero)).toThrow("Division by zero");
+      expect(p1.quotient(p1).eq(one)).toBe(true);
     });
 
     test("mod", () => {
@@ -293,16 +290,16 @@ if (import.meta.vitest) {
       // Remainder should be P(-1)
       // P(-1) = (-1)^3 + 3(-1)^2 + 7(-1) + 5 = -1 + 3 - 7 + 5 = 0
       const expected_remainder = PF.zero();
-      expect(p_dividend.mod(p_divisor).eq(expected_remainder)).toBe(true);
+      expect(p_dividend.remainder(p_divisor).eq(expected_remainder)).toBe(true);
 
       const p3 = PF.from([1n, 0n, 1n]); // x^2 + 1
       const p4 = PF.from([1n, 1n]); // x + 1
       // (x^2+1) mod (x+1) => (-1)^2 + 1 = 1+1 = 2
       const expected_rem2 = PF.from([2n]);
-      expect(p3.mod(p4).eq(expected_rem2)).toBe(true);
+      expect(p3.remainder(p4).eq(expected_rem2)).toBe(true);
 
-      expect(() => p1.mod(zero)).toThrow("Modulo by zero polynomial");
-      expect(p1.mod(p1).eq(zero)).toBe(true);
+      expect(() => p1.remainder(zero)).toThrow("Modulo by zero polynomial");
+      expect(p1.remainder(p1).eq(zero)).toBe(true);
     });
 
     test("pow", () => {

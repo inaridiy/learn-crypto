@@ -7,22 +7,21 @@ import {
   FQ12,
   POLY,
 } from "../curves/bls12-381";
-import { EllipticCurvePoint } from "./curve";
-import { ExtendedFiniteField } from "./extended-finite-field";
+import { ECPointCyclicGroupOnExtendedFF, ECPointOnExtendedFF } from "./elliptic-curve";
 
 const ATE_LOOP_COUNT = 15132376222941642752n;
 const LOG_ATE_LOOP_COUNT = 62n;
 
-const embedFQ12 = (P: EllipticCurvePoint<ExtendedFiniteField>) => {
+const embedFQ12 = (P: ECPointOnExtendedFF) => {
   return BLS12_381_FQ12.from({
-    x: FQ12.from(P.point.x.n),
-    y: FQ12.from(P.point.y.n),
+    x: FQ12.from(P.x.n),
+    y: FQ12.from(P.y.n),
   });
 };
 
-const twist = (P: EllipticCurvePoint<ExtendedFiniteField>) => {
-  const xc = [P.point.x.n.coeffs[0].sub(P.point.x.n.coeffs[1]), P.point.x.n.coeffs[1]];
-  const yc = [P.point.y.n.coeffs[0].sub(P.point.y.n.coeffs[1]), P.point.y.n.coeffs[1]];
+const twist = (P: ECPointOnExtendedFF) => {
+  const xc = [P.x.n.coeffs[0].sub(P.x.n.coeffs[1]), P.x.n.coeffs[1]];
+  const yc = [P.y.n.coeffs[0].sub(P.y.n.coeffs[1]), P.y.n.coeffs[1]];
 
   const nx = FQ12.from(POLY.from([xc[0].n, 0n, 0n, 0n, 0n, 0n, xc[1].n, 0n, 0n, 0n, 0n, 0n, 0n]));
   const ny = FQ12.from(POLY.from([yc[0].n, 0n, 0n, 0n, 0n, 0n, yc[1].n, 0n, 0n, 0n, 0n, 0n, 0n]));
@@ -33,16 +32,12 @@ const twist = (P: EllipticCurvePoint<ExtendedFiniteField>) => {
   return BLS12_381_FQ12.from({ x: mx, y: my });
 };
 
-const lineFunction = (
-  P1: EllipticCurvePoint<ExtendedFiniteField>,
-  P2: EllipticCurvePoint<ExtendedFiniteField>,
-  Q: EllipticCurvePoint<ExtendedFiniteField>
-) => {
-  if (P1.point.x.n.isZero() || P2.point.x.n.isZero() || Q.point.x.n.isZero()) return FQ12.one();
+const lineFunction = (P1: ECPointOnExtendedFF, P2: ECPointOnExtendedFF, Q: ECPointOnExtendedFF) => {
+  if (P1.x.n.isZero() || P2.x.n.isZero() || Q.x.n.isZero()) return FQ12.one();
 
-  const { x: x1, y: y1 } = P1.point;
-  const { x: x2, y: y2 } = P2.point;
-  const { x: xq, y: yq } = Q.point;
+  const { x: x1, y: y1 } = P1;
+  const { x: x2, y: y2 } = P2;
+  const { x: xq, y: yq } = Q;
 
   if (!x1.eq(x2)) {
     const m = y2.sub(y1).div(x2.sub(x1));
@@ -55,16 +50,13 @@ const lineFunction = (
   }
 };
 
-export const millerLoop = (
-  P: EllipticCurvePoint<ExtendedFiniteField>,
-  Q: EllipticCurvePoint<ExtendedFiniteField>
-) => {
+export const millerLoop = (P: ECPointOnExtendedFF, Q: ECPointOnExtendedFF) => {
   let R = Q;
   let f = FQ12.one();
 
   for (let i = LOG_ATE_LOOP_COUNT; i >= 0n; i--) {
     f = f.pow(2n).mul(lineFunction(R, R, P));
-    R = R.mul(2n);
+    R = R.scale(2n);
 
     if (ATE_LOOP_COUNT & (1n << i)) {
       f = f.mul(lineFunction(R, Q, P));
@@ -75,12 +67,9 @@ export const millerLoop = (
   return f.pow((FIELD_MODULUS ** 12n - 1n) / CURVE_ORDER);
 };
 
-export const pairing = (
-  P: EllipticCurvePoint<ExtendedFiniteField>,
-  Q: EllipticCurvePoint<ExtendedFiniteField>
-) => {
-  const P_ = P.curve.a.mod.degree() === 2 ? twist(P) : embedFQ12(P);
-  const Q_ = Q.curve.a.mod.degree() === 2 ? twist(Q) : embedFQ12(Q);
+export const pairing = (P: ECPointCyclicGroupOnExtendedFF, Q: ECPointCyclicGroupOnExtendedFF) => {
+  const P_ = P.structure.a.p.degree() === 2 ? twist(P) : embedFQ12(P);
+  const Q_ = Q.structure.a.p.degree() === 2 ? twist(Q) : embedFQ12(Q);
 
   return millerLoop(P_, Q_);
 };
@@ -91,10 +80,10 @@ if (import.meta.vitest) {
     const a = 123n;
     const b = 456n;
 
-    const aP = BLS12_381_G1.mul(a);
-    const bQ = BLS12_381_G2.mul(b);
+    const aP = BLS12_381_G1.generator().scale(a);
+    const bQ = BLS12_381_G2.generator().scale(b);
 
-    const e1 = pairing(BLS12_381_G1, BLS12_381_G2);
+    const e1 = pairing(BLS12_381_G1.generator(), BLS12_381_G2.generator());
     const e2 = pairing(aP, bQ);
 
     expect(e1.pow(a * b)).toEqual(e2);

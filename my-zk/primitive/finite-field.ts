@@ -78,18 +78,6 @@ export class FiniteFieldElement implements FieldElement<FiniteFieldElement, bigi
     return this.mul(otherInv);
   }
 
-  quotient(other: FiniteFieldElement) {
-    return this.div(other);
-  }
-
-  remainder(_: FiniteFieldElement) {
-    return this.structure.zero();
-  }
-
-  divmod(other: FiniteFieldElement) {
-    return [this.div(other), this.structure.zero()] as const;
-  }
-
   pow(n: bigint) {
     return pow<FiniteFieldElement>(this, n);
   }

@@ -1,11 +1,17 @@
-import { EllipticCurve } from "../primitive/curve";
-import { FiniteFieldFactory } from "../primitive/finite-field";
+import { ECPointCyclicGroup } from "../primitive/elliptic-curve";
+import { FiniteField } from "../primitive/finite-field";
 
-export const FQ = new FiniteFieldFactory(2n ** 256n - 2n ** 32n - 977n);
+export const FQ = new FiniteField(2n ** 256n - 2n ** 32n - 977n);
 
-export const SECP256K1_G = {
-  x: FQ.from(55066263022277343669578718895168534326250603453777594175500187360389116729240n),
-  y: FQ.from(32670510020758816978083085130507043184471273380659243275938904335757337482424n),
-};
+export const SECP256K1_G_ORDER =
+  115792089237316195423570985008687907852837564279074904382605163141518161494337n;
 
-export const SECP256K1 = new EllipticCurve(FQ.from(0n), FQ.from(7n));
+export const SECP256K1_G = new ECPointCyclicGroup(
+  FQ.from(0n),
+  FQ.from(7n),
+  {
+    x: FQ.from(55066263022277343669578718895168534326250603453777594175500187360389116729240n),
+    y: FQ.from(32670510020758816978083085130507043184471273380659243275938904335757337482424n),
+  },
+  SECP256K1_G_ORDER
+);

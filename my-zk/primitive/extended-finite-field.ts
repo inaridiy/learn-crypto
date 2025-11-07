@@ -1,12 +1,9 @@
-import { FiniteFieldElement } from "./finite-field";
 import { Field, FieldElement } from "./interface";
 import { extendedGCD, pow } from "./math";
-import { Polynomial } from "./polynomial";
+import { type PolynomialOnFF } from "./polynomial";
 
-type PolyOnFF = Polynomial<FiniteFieldElement, bigint | FiniteFieldElement>;
-
-export class ExtendedFiniteField implements Field<ExtendedFiniteFieldElement, PolyOnFF> {
-  constructor(public readonly p: PolyOnFF) {}
+export class ExtendedFiniteField implements Field<ExtendedFiniteFieldElement, PolynomialOnFF> {
+  constructor(public readonly p: PolynomialOnFF) {}
 
   zero() {
     return new ExtendedFiniteFieldElement(this, this.p, this.p.structure.zero());
@@ -16,27 +13,27 @@ export class ExtendedFiniteField implements Field<ExtendedFiniteFieldElement, Po
     return new ExtendedFiniteFieldElement(this, this.p, this.p.structure.one());
   }
 
-  from(value: ExtendedFiniteFieldElement | PolyOnFF) {
+  from(value: ExtendedFiniteFieldElement | PolynomialOnFF) {
     if (value instanceof ExtendedFiniteFieldElement) return value;
     return new ExtendedFiniteFieldElement(this, this.p, value);
   }
 }
 
 export class ExtendedFiniteFieldElement
-  implements FieldElement<ExtendedFiniteFieldElement, PolyOnFF>
+  implements FieldElement<ExtendedFiniteFieldElement, PolynomialOnFF>
 {
   public readonly structure: ExtendedFiniteField;
 
   public readonly CommutativeRingElement = true;
   public readonly FieldElement = true;
 
-  public readonly p: PolyOnFF;
-  public readonly n: PolyOnFF;
+  public readonly p: PolynomialOnFF;
+  public readonly n: PolynomialOnFF;
 
-  constructor(structure: ExtendedFiniteField, p: PolyOnFF, n: PolyOnFF) {
+  constructor(structure: ExtendedFiniteField, p: PolynomialOnFF, n: PolynomialOnFF) {
     this.structure = structure;
     this.p = p;
-    this.n = n.mod(this.p);
+    this.n = n.remainder(this.p);
   }
 
   eq(other: ExtendedFiniteFieldElement): boolean {
@@ -78,7 +75,7 @@ export class ExtendedFiniteFieldElement
   inverse() {
     const [g, x, _] = extendedGCD(this.n, this.p);
     if (g.degree() !== 0) throw new Error("Not invertible");
-    else if (g.coeffs[0].n !== 1n) return this.structure.from(x.div(g));
+    else if (g.coeffs[0].n !== 1n) return this.structure.from(x.quotient(g));
     else return this.structure.from(x);
   }
 
