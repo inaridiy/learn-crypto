@@ -14,6 +14,14 @@ export type PinocchioPoint = {
   g2: ECPointCyclicGroupOnExtendedFF;
 };
 
+// G1とG2の生成元を取得。
+const [g1, g2] = [BLS12_381_G1.generator(), BLS12_381_G2.generator()];
+// 有限体の要素 v を、G1とG2上の点 E(v) = (v*g1, v*g2) にエンコードする関数。
+const encode = (v: FiniteFieldElement): PinocchioPoint => ({
+  g1: g1.scale(v.n),
+  g2: g2.scale(v.n),
+});
+
 // G1, G2両方の群における単位元（ゼロ点）を返す。
 const pointZero = (): PinocchioPoint => ({
   g1: BLS12_381_G1.zero(),
@@ -93,6 +101,38 @@ const buildTargetPolynomial = (
     target = target.mul(factor);
   }
   return target;
+};
+
+/**
+ * 係数を使って、エンコードされたsのべき乗の級数評価を行う。
+ * P(s) = c_0 + c_1*s + c_2*s^2 + ...
+ * E(P(s)) = c_0*E(1) + c_1*E(s) + c_2*E(s^2) + ...
+ *        = E(1)^c_0 * E(s)^c_1 * E(s^2)^c_2 * ...
+ * @param coeffs - 多項式の係数 [c_0, c_1, ...]。
+ * @param constantPoint - E(1) に相当する点。
+ * @param series - [E(s), E(s^2), ...] の配列。
+ * @returns E(P(s)) の計算結果。
+ */
+const buildSeriesEvaluation = (
+  coeffs: FiniteFieldElement[],
+  constantPoint: PinocchioPoint,
+  series: PinocchioPoint[]
+) => {
+  let acc = pointZero();
+  const constantCoeff = coeffs[0];
+  if (constantCoeff && !constantCoeff.isZero()) {
+    acc = pointAdd(acc, pointScale(constantPoint, constantCoeff));
+  }
+  for (let i = 1; i < coeffs.length; i++) {
+    const coeff = coeffs[i];
+    if (!coeff || coeff.isZero()) continue;
+    const seriesIndex = i - 1;
+    if (seriesIndex >= series.length) {
+      throw new Error("Evaluation key does not cover polynomial degree");
+    }
+    acc = pointAdd(acc, pointScale(series[seriesIndex], coeff));
+  }
+  return acc;
 };
 
 // Prover（証明者）が証明を生成するために必要な情報。Trusted Setupで生成される。
@@ -184,14 +224,6 @@ export const trustedSetup = (r1cs: R1CSConstraints<FiniteFieldElement>): Pinocch
     random(r1cs.structure.p)
   ).map((v) => r1cs.structure.from(v));
 
-  // G1とG2の生成元を取得。
-  const [g1, g2] = [BLS12_381_G1.generator(), BLS12_381_G2.generator()];
-  // 有限体の要素 v を、G1とG2上の点 E(v) = (v*g1, v*g2) にエンコードする関数。
-  const encode = (v: FiniteFieldElement): PinocchioPoint => ({
-    g1: g1.scale(v.n),
-    g2: g2.scale(v.n),
-  });
-
   // sのべき乗 s, s^2, ..., s^d を計算する。
   const ss = Array.from({ length: maxDegree }, (_, i) => s.pow(BigInt(i + 1)));
 
@@ -274,38 +306,6 @@ export const trustedSetup = (r1cs: R1CSConstraints<FiniteFieldElement>): Pinocch
   };
 
   return { evaluationKey: ek, verificationKey: vk, metadata };
-};
-
-/**
- * 係数を使って、エンコードされたsのべき乗の級数評価を行う。
- * P(s) = c_0 + c_1*s + c_2*s^2 + ...
- * E(P(s)) = c_0*E(1) + c_1*E(s) + c_2*E(s^2) + ...
- *        = E(1)^c_0 * E(s)^c_1 * E(s^2)^c_2 * ...
- * @param coeffs - 多項式の係数 [c_0, c_1, ...]。
- * @param constantPoint - E(1) に相当する点。
- * @param series - [E(s), E(s^2), ...] の配列。
- * @returns E(P(s)) の計算結果。
- */
-const buildSeriesEvaluation = (
-  coeffs: FiniteFieldElement[],
-  constantPoint: PinocchioPoint,
-  series: PinocchioPoint[]
-) => {
-  let acc = pointZero();
-  const constantCoeff = coeffs[0];
-  if (constantCoeff && !constantCoeff.isZero()) {
-    acc = pointAdd(acc, pointScale(constantPoint, constantCoeff));
-  }
-  for (let i = 1; i < coeffs.length; i++) {
-    const coeff = coeffs[i];
-    if (!coeff || coeff.isZero()) continue;
-    const seriesIndex = i - 1;
-    if (seriesIndex >= series.length) {
-      throw new Error("Evaluation key does not cover polynomial degree");
-    }
-    acc = pointAdd(acc, pointScale(series[seriesIndex], coeff));
-  }
-  return acc;
 };
 
 /**
