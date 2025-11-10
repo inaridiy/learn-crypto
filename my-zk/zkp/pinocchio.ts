@@ -335,8 +335,8 @@ export const prove = (
   // witnessをベクトル形式に変換し、公開情報(IO)と中間変数(mid)に分割する。
   const witnessVector = toWitnessVector(witness);
   const midStart = metadata.midStart;
-  const midCoeffs = witnessVector.slice(midStart);
   const ioCoeffs = witnessVector.slice(0, midStart);
+  const midCoeffs = witnessVector.slice(midStart);
 
   const combine = (polys: PolynomialOnFF[], coeffs: FiniteFieldElement[]) =>
     linearCombinePolynomials(factory, polys, coeffs);
@@ -466,7 +466,9 @@ if (import.meta.vitest) {
   const { describe, it, expect } = import.meta.vitest;
 
   const field = new FiniteField(CURVE_ORDER);
-  const row = (coeffs: bigint[]): FiniteFieldElement[] => coeffs.map((v) => field.from(v));
+  const row = (coeffs: (bigint | number)[]): FiniteFieldElement[] =>
+    coeffs.map((v) => field.from(BigInt(v)));
+  const matrix = (m: (bigint | number)[][]) => m.map((coeffs) => row(coeffs));
 
   // テスト用のR1CSを定義する。
   // 制約: (1*in_1) * (1*in_2) = (1*out_1)
@@ -483,21 +485,51 @@ if (import.meta.vitest) {
     c: [row([0n, 0n, 0n, 1n])], // そのため、bは[0,0,1,0]ではなく、[0,0,0,1]に対応する中間変数を指すべきだが、このテストの構成上、x*y=zをx(input),y(output),z(intermediate)でマッピングしているため、このままで正しい。
   };
 
+  // out = x^3 + x + 5 の解を知っているか
+  /**
+   * x2 = x * x
+   * x3 = x2 * x
+   * x3_x = x3 + x
+   * out = x3_x + 5
+   */
+  const complexR1cs: R1CSConstraints<FiniteFieldElement> = {
+    structure: field,
+    index: { one: 0, input: 1, output: 2 }, // このR1CSはinputが1つ、outputが1つ
+    a: matrix([
+      [0, 1, 0, 0, 0, 0],
+      [0, 0, 0, 1, 0, 0],
+      [0, 1, 0, 0, 1, 0],
+      [5, 0, 0, 0, 0, 1],
+    ]),
+    b: matrix([
+      [0, 1, 0, 0, 0, 0],
+      [0, 1, 0, 0, 0, 0],
+      [1, 0, 0, 0, 0, 0],
+      [1, 0, 0, 0, 0, 0],
+    ]),
+    c: matrix([
+      [0, 0, 0, 1, 0, 0],
+      [0, 0, 0, 0, 1, 0],
+      [0, 0, 0, 0, 0, 1],
+      [0, 0, 1, 0, 0, 0],
+    ]),
+  };
+
   const buildWitness = (
     x: bigint, // input
-    y: bigint, // output: 本来は計算結果だが、このテストでは回路が単純なため、擬似的にinputとして扱う
-    z: bigint // intermediate (x * y の結果)
+    y: bigint, // output
+    intermediates: bigint[] // intermediate (x * y の結果)
   ): StructuralWitness<FiniteFieldElement> => ({
     one: field.one(),
     inputs: [field.from(x)],
     outputs: [field.from(y)], // 本来はoutputだが、テストの制約式c*w=zに対応させるため
-    intermediates: [field.from(z)],
+    intermediates: row(intermediates),
   });
 
   describe("pinocchio", () => {
     it("produces a proof that verifies", () => {
       // 3 * 4 = 12, 正しいwitness
-      const witness = buildWitness(3n, 4n, 12n);
+      const witness = buildWitness(3n, 4n, [12n]);
       const setup = trustedSetup(r1cs);
       const proof = prove(r1cs, setup, witness);
 
@@ -506,7 +538,7 @@ if (import.meta.vitest) {
 
     it("fails verification when public outputs differ", () => {
       // witnessは正しいが、検証時に異なる公開情報(outputs)を使う
-      const witness = buildWitness(3n, 4n, 12n);
+      const witness = buildWitness(3n, 4n, [12n]);
       const setup = trustedSetup(r1cs);
       const proof = prove(r1cs, setup, witness);
 
@@ -522,11 +554,33 @@ if (import.meta.vitest) {
     it("rejects witnesses that do not satisfy the circuit", () => {
       const setup = trustedSetup(r1cs);
       // 2 * 5 != 9, 不正なwitness
-      const badWitness = buildWitness(2n, 5n, 9n);
+      const badWitness = buildWitness(2n, 5n, [9n]);
       // prove関数は内部でisSatisfiedを呼ぶため、ここでエラーがスローされるはず
       expect(() => prove(r1cs, setup, badWitness)).toThrow(
         "Witness does not satisfy R1CS constraints"
       );
+    });
+
+    it("produces a proof that verifies with complex r1cs", () => {
+      const witness = buildWitness(3n, 35n, [9n, 27n, 30n]);
+      const setup = trustedSetup(complexR1cs);
+      const proof = prove(complexR1cs, setup, witness);
+
+      expect(verify(setup, witness, proof)).toBe(true);
+    });
+
+    it("fails verification when public outputs differ with complex r1cs", () => {
+      const witness = buildWitness(3n, 35n, [9n, 27n, 30n]);
+
+      const setup = trustedSetup(complexR1cs);
+      const proof = prove(complexR1cs, setup, witness);
+
+      const tampered = {
+        ...witness,
+        outputs: [field.from(6n)],
+      };
+
+      expect(verify(setup, tampered, proof)).toBe(false);
     });
   });
 }

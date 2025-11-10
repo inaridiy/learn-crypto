@@ -33,7 +33,7 @@ const commitWithG1 = (p: PolynomialOnFF, setup: TrustedSetup) => {
     .reduce((acc, curr) => acc.add(curr));
 };
 
-const makeProof = (p: PolynomialOnFF, a: FiniteFieldElement, setup: TrustedSetup) => {
+const prove = (p: PolynomialOnFF, a: FiniteFieldElement, setup: TrustedSetup) => {
   const y = p.eval(a);
   const qx = p.sub(POLY_FOR_KZG.from([y])).quotient(POLY_FOR_KZG.from([-a.n, 1n]));
   const proof = commitWithG1(qx, setup);
@@ -65,7 +65,7 @@ if (import.meta.vitest) {
       const commitment = commitWithG1(p, setup);
 
       const a = FF.from(17n);
-      const { proof, y } = makeProof(p, a, setup);
+      const { proof, y } = prove(p, a, setup);
       const isValid = verify(proof, a, y, commitment, setup);
       expect(isValid).toBe(true);
     });
