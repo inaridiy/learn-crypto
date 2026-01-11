@@ -13,15 +13,15 @@ export class PolynomialFactory<T extends FieldElement<T, TLike>, TLike>
 {
   constructor(public readonly coeffField: Field<T, TLike>) {}
 
-  zero() {
+  zero(): Polynomial<T, TLike> {
     return new Polynomial(this, [this.coeffField.zero()]);
   }
 
-  one() {
+  one(): Polynomial<T, TLike> {
     return new Polynomial(this, [this.coeffField.one()]);
   }
 
-  from(value: T[] | TLike[] | Polynomial<T, TLike>) {
+  from(value: T[] | TLike[] | Polynomial<T, TLike>): Polynomial<T, TLike> {
     if (value instanceof Polynomial) return value;
     return new Polynomial(
       this,
@@ -74,7 +74,7 @@ export class Polynomial<T extends FieldElement<T, TLike>, TLike>
     return true;
   }
 
-  clone() {
+  clone(): Polynomial<T, TLike> {
     return this.structure.from(this.coeffs.map((c) => c.clone()));
   }
 
@@ -135,7 +135,7 @@ export class Polynomial<T extends FieldElement<T, TLike>, TLike>
     return this.structure.from(this.coeffs.map((c) => c.negate()));
   }
 
-  pow(n: bigint) {
+  pow(n: bigint): Polynomial<T, TLike> {
     return pow<Polynomial<T, TLike>>(this, n);
   }
 
