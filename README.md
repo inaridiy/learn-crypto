@@ -49,8 +49,3 @@ npx tsx path/to/file.ts
 [EC Elgamal Encryption](./topics/simple-ec/ecelgamal.ts)  
 [Lifted Elgamal Encryption and additive quasi-homomorphism](./topics/simple-ec/liftedecelgamal.ts)  
 [ECDSA Digital Signature](./topics/simple-ec/ecdsa.ts)
-
-## PSE Summer Contribution Program Exercise
-
-[Module 1](./pse-modules/module1)
-[Module 2](./pse-modules/module2/)
