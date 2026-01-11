@@ -1,4 +1,4 @@
-import { BLS12_381_G1, BLS12_381_G2, CURVE_ORDER } from "./curves/bls12-381";
+import { BLS12_381_G1, BLS12_381_G2, CURVE_ORDER } from "./primitive/curves/bls12-381";
 import { ECPointOnExtendedFF } from "./primitive/elliptic-curve";
 import { ExtendedFiniteField } from "./primitive/extended-finite-field";
 import { FiniteField, FiniteFieldElement } from "./primitive/finite-field";
