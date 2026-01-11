@@ -20,8 +20,14 @@ const embedFQ12 = (P: ECPointOnExtendedFF) => {
 };
 
 const twist = (P: ECPointOnExtendedFF) => {
-  const xc = [P.x.n.coeffs[0].sub(P.x.n.coeffs[1]), P.x.n.coeffs[1]];
-  const yc = [P.y.n.coeffs[0].sub(P.y.n.coeffs[1]), P.y.n.coeffs[1]];
+  const xZero = P.x.n.structure.coeffField.zero();
+  const yZero = P.y.n.structure.coeffField.zero();
+
+  const [x0, x1] = [P.x.n.coeffs[0] ?? xZero, P.x.n.coeffs[1] ?? xZero];
+  const [y0, y1] = [P.y.n.coeffs[0] ?? yZero, P.y.n.coeffs[1] ?? yZero];
+
+  const xc = [x0.sub(x1), x1];
+  const yc = [y0.sub(y1), y1];
 
   const nx = FQ12.from(POLY.from([xc[0].n, 0n, 0n, 0n, 0n, 0n, xc[1].n, 0n, 0n, 0n, 0n, 0n, 0n]));
   const ny = FQ12.from(POLY.from([yc[0].n, 0n, 0n, 0n, 0n, 0n, yc[1].n, 0n, 0n, 0n, 0n, 0n, 0n]));
