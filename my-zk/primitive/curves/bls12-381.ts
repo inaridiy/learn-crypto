@@ -1,10 +1,7 @@
-import { ECPointCyclicGroup, EllipticCurve } from "../primitive/elliptic-curve";
-import { FiniteField } from "../primitive/finite-field";
-import { PolynomialFactory, type PolynomialOnFF } from "../primitive/polynomial";
-import {
-  ExtendedFiniteField,
-  ExtendedFiniteFieldElement,
-} from "../primitive/extended-finite-field";
+import { ECPointCyclicGroup, EllipticCurve } from "../elliptic-curve";
+import { FiniteField } from "../finite-field";
+import { PolynomialFactory, type PolynomialOnFF } from "../polynomial";
+import { ExtendedFiniteField, ExtendedFiniteFieldElement } from "../extended-finite-field";
 
 export const FIELD_MODULUS =
   4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787n;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CURVE_ORDER } from "../../curves/bls12-381";
+import { CURVE_ORDER } from "../../primitive/curves/bls12-381";
 import { FiniteField, FiniteFieldElement } from "../../primitive/finite-field";
 import { defaultPinocchioConfig } from "../pinocchio";
 import { createR1CSConstraints, StructuralWitness, toWitnessVector } from "../r1cs";

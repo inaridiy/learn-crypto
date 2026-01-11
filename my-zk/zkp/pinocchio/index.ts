@@ -1,5 +1,5 @@
 import { random } from "../../../topics/random";
-import { BLS12_381_G1, BLS12_381_G2 } from "../../curves/bls12-381";
+import { BLS12_381_G1, BLS12_381_G2 } from "../../primitive/curves/bls12-381";
 import { pairing } from "../../primitive/paring";
 import {
   createProve,

@@ -6,7 +6,7 @@ import {
   FIELD_MODULUS,
   FQ12,
   POLY,
-} from "../curves/bls12-381";
+} from "./curves/bls12-381";
 import { ECPointOnExtendedFF } from "./elliptic-curve";
 
 const ATE_LOOP_COUNT = 15132376222941642752n;

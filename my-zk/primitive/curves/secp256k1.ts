@@ -1,5 +1,5 @@
-import { ECPointCyclicGroup } from "../primitive/elliptic-curve";
-import { FiniteField } from "../primitive/finite-field";
+import { ECPointCyclicGroup } from "../elliptic-curve";
+import { FiniteField } from "../finite-field";
 
 export const FQ = new FiniteField(2n ** 256n - 2n ** 32n - 977n);
 
