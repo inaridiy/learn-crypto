@@ -1,9 +1,22 @@
 import { FieldElement } from "../primitive/interface";
 import { FiniteField, FiniteFieldElement } from "../primitive/finite-field";
 
+export type R1CSIndex = {
+  one: 0;
+  input: number;
+  output: number;
+  privateInput: number;
+};
+
+export type R1CSVariableCounts = {
+  inputCount: number;
+  outputCount: number;
+  privateInputCount: number;
+};
+
 export type R1CSConstraints<F extends FieldElement<F, any>> = {
   structure: F["structure"];
-  index: { one: 0; input: number; output: number };
+  index: R1CSIndex;
   a: F[][];
   b: F[][];
   c: F[][];
@@ -13,11 +26,41 @@ export type StructuralWitness<F extends FieldElement<F, any>> = {
   one: F;
   inputs: F[];
   outputs: F[];
+  privateInputs: F[];
   intermediates: F[];
 };
 
+export const createR1CSIndex = (counts: R1CSVariableCounts): R1CSIndex => {
+  if (counts.inputCount < 0 || counts.outputCount < 0 || counts.privateInputCount < 0) {
+    throw new Error("R1CS variable counts must be non-negative");
+  }
+
+  const input = counts.inputCount;
+  const output = input + counts.outputCount;
+  const privateInput = output + counts.privateInputCount;
+
+  return { one: 0, input, output, privateInput };
+};
+
+export const createR1CSConstraints = <F extends FieldElement<F, any>>(
+  structure: F["structure"],
+  counts: R1CSVariableCounts,
+  a: F[][],
+  b: F[][],
+  c: F[][]
+): R1CSConstraints<F> => {
+  const index = createR1CSIndex(counts);
+  return { structure, index, a, b, c };
+};
+
 export const toWitnessVector = <F extends FieldElement<F, any>>(witness: StructuralWitness<F>) => {
-  return [witness.one, ...witness.inputs, ...witness.outputs, ...witness.intermediates];
+  return [
+    witness.one,
+    ...witness.inputs,
+    ...witness.outputs,
+    ...witness.privateInputs,
+    ...witness.intermediates,
+  ];
 };
 
 export const isSatisfied = <F extends FieldElement<F, any>>(
@@ -70,13 +113,13 @@ if (import.meta.vitest) {
   //   field.from(typeof value === "bigint" ? value : BigInt(value));
   const row = (coeffs: bigint[]): FiniteFieldElement[] => coeffs.map((v) => field.from(v));
 
-  const r1cs: R1CSConstraints<FiniteFieldElement> = {
-    structure: field,
-    index: { one: 0, input: 1, output: 2 },
-    a: [row([0n, 1n, 0n, 0n])],
-    b: [row([0n, 0n, 1n, 0n])],
-    c: [row([0n, 0n, 0n, 1n])],
-  };
+  const r1cs = createR1CSConstraints(
+    field,
+    { inputCount: 1, outputCount: 1, privateInputCount: 1 },
+    [row([0n, 1n, 0n, 0n])],
+    [row([0n, 0n, 0n, 1n])],
+    [row([0n, 0n, 1n, 0n])]
+  );
 
   const buildWitness = (
     x: bigint,
@@ -86,22 +129,23 @@ if (import.meta.vitest) {
     one: field.one(),
     inputs: [field.from(x)],
     outputs: [field.from(y)],
-    intermediates: [field.from(z)],
+    privateInputs: [field.from(z)],
+    intermediates: [],
   });
 
   describe("isSatisfied", () => {
     it("returns true when an R1CS witness meets all constraints", () => {
-      const witness = buildWitness(3n, 4n, 12n);
+      const witness = buildWitness(3n, 12n, 4n);
       expect(isSatisfied(r1cs, witness)).toBe(true);
     });
 
     it("returns false when the witness violates a constraint", () => {
-      const witness = buildWitness(3n, 4n, 10n);
+      const witness = buildWitness(3n, 10n, 4n);
       expect(isSatisfied(r1cs, witness)).toBe(false);
     });
 
     it("throws when the witness does not start with the constant one", () => {
-      const witness = buildWitness(2n, 5n, 10n);
+      const witness = buildWitness(2n, 6n, 3n);
       witness.one = field.from(0n);
       expect(() => isSatisfied(r1cs, witness)).toThrow("Witness must include the constant 1");
     });

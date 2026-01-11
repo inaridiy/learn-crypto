@@ -1,7 +1,7 @@
 import { matrixToPolynomials } from "../../primitive/lagrange";
 import { PolynomialFactory, PolynomialOnFF } from "../../primitive/polynomial";
 import { FiniteFieldElement } from "../../primitive/finite-field";
-import { ProveResult, PinocchioRuntime, PinocchioSetup } from "./types";
+import { ProveResult, PinocchioRuntime, PinocchioSetup, ZkPinocchioSetup } from "./types";
 import { StructuralWitness, R1CSConstraints, toWitnessVector } from "../r1cs";
 import { evalPolyWithCrs, linearCombinePolynomials, linearCombinationPoints } from "./operations";
 import { buildAlphaCrs, buildBetaBundles, buildTargetPolynomial } from "./crs";
@@ -23,7 +23,7 @@ export const createTrustedSetup =
       sampleFieldElement(r1cs.structure)
     );
 
-    const midStart = r1cs.index.output + 1; // 1, public inputs, public outputs の次から中間変数
+    const midStart = r1cs.index.output + 1; // 1, public inputs, public outputs の次から秘密入力 + 中間変数
 
     // FlatteningされたR1CSの行列A, B, Cを、ラグランジュ補間を用いて多項式の列に変換します（QAP化）。
     const [aps, bps, cps] = [r1cs.a, r1cs.b, r1cs.c].map((v) =>
@@ -82,6 +82,7 @@ export const createTrustedSetup =
       field: r1cs.structure,
       inputCount: r1cs.index.input - r1cs.index.one,
       outputCount: r1cs.index.output - r1cs.index.input,
+      privateInputCount: r1cs.index.privateInput - r1cs.index.output,
       midStart,
       maxDegree,
       constraintCount: r1cs.a.length,
@@ -127,7 +128,6 @@ export const createProve =
     const bMidPoly = combine(bps.slice(midStart), midCoeffs);
     const cMidPoly = combine(cps.slice(midStart), midCoeffs);
 
-    // IOとMidを結合して、完全な A(x), B(x), C(x) を得ます。
     const aPoly = aIOPoly.add(aMidPoly);
     const bPoly = bIOPoly.add(bMidPoly);
     const cPoly = cIOPoly.add(cMidPoly);
@@ -162,6 +162,200 @@ export const createProve =
     // 全ての中間変数に対して、A, B, Cで同じ係数 w_k が使われていることを証明するための項です。
     // Z = Σ_{k \in Mid} w_k * \beta(A_k(s) + B_k(s) + C_k(s))
     const gZ = linearCombinationPoints(pointOps, key.betaBundles, midCoeffs);
+
+    // IO部分と証明（Proof）を返却
+    return {
+      ioCoeffs,
+      proof: { gH, gAMid, gAlphaAMid, gBMid, gAlphaBMid, gCMid, gAlphaCMid, gZ },
+    };
+  };
+
+export const createZkTrustedSetup =
+  (runtime: PinocchioRuntime) =>
+  (r1cs: R1CSConstraints<FiniteFieldElement>): ZkPinocchioSetup => {
+    const { pointOps, sampleFieldElement } = runtime;
+
+    // Toxic Waste（有害な廃棄物）:
+    // 以下のランダム値 s, α, β は、CRS生成後に完全に破棄されなければなりません。
+    // これらが漏洩すると、任意の偽の証明を作成できてしまいます（健全性が崩壊する）。
+    const [s, alphaA, alphaB, alphaC, beta] = Array.from({ length: 5 }, () =>
+      sampleFieldElement(r1cs.structure)
+    );
+
+    const midStart = r1cs.index.output + 1; // 1, public inputs, public outputs の次から秘密入力 + 中間変数
+
+    // FlatteningされたR1CSの行列A, B, Cを、ラグランジュ補間を用いて多項式の列に変換します（QAP化）。
+    const [aps, bps, cps] = [r1cs.a, r1cs.b, r1cs.c].map((v) =>
+      matrixToPolynomials(r1cs.structure, v)
+    );
+
+    // 中間変数(Mid)部分に対してのみ、健全性チェック用のCRSを生成します。
+    // （入出力部分は検証者が自分で計算できるためCRSには含めません）
+    const crsApsMid = buildAlphaCrs(pointOps, aps.slice(midStart), s, alphaA);
+    const crsBpsMid = buildAlphaCrs(pointOps, bps.slice(midStart), s, alphaB);
+    const crsCpsMid = buildAlphaCrs(pointOps, cps.slice(midStart), s, alphaC);
+
+    // A, B, C の係数一貫性をチェックするためのCRSバンドルを生成します。
+    const betaBundles = buildBetaBundles(
+      pointOps,
+      [aps.slice(midStart), bps.slice(midStart), cps.slice(midStart)],
+      s,
+      beta
+    );
+
+    // ターゲット多項式 t(x) を構築します。t(x) = Π(x - i)
+    const pFactory = new PolynomialFactory(r1cs.structure);
+    const t = buildTargetPolynomial(pFactory, r1cs.a.length);
+
+    // 多項式の次数に合わせて s のべき乗 {s^1, s^2, ...} を用意します。
+    const degreeCandidates = [...aps, ...bps, ...cps].map((p) => p.degree());
+    const baseDegree = degreeCandidates.length > 0 ? Math.max(...degreeCandidates) : 0;
+    const maxDegree = Math.max(baseDegree, t.degree());
+
+    const ss = Array.from({ length: maxDegree }, (_, i) => s.pow(BigInt(i + 1)));
+    const gSs = ss.map((value) => pointOps.encode(value));
+
+    // 検証に必要な定数などをエンコード
+    const gOne = pointOps.encode(r1cs.structure.one());
+    const gAlphaA = pointOps.encode(alphaA);
+    const gAlphaB = pointOps.encode(alphaB);
+    const gAlphaC = pointOps.encode(alphaC);
+    const gBeta = pointOps.encode(beta);
+    const gTPoly = pointOps.encode(t.eval(s));
+    const gAlphaAT = pointOps.scale(gTPoly, alphaA);
+    const gAlphaBT = pointOps.scale(gTPoly, alphaB);
+    const gAlphaCT = pointOps.scale(gTPoly, alphaC);
+    const gBetaT = pointOps.scale(gTPoly, beta);
+
+    const pinocchioKey = {
+      gSs,
+      crsApsMid,
+      crsBpsMid,
+      crsCpsMid,
+      betaBundles,
+      gOne,
+      gAlphaA,
+      gAlphaB,
+      gAlphaC,
+      gAlphaAT,
+      gAlphaBT,
+      gAlphaCT,
+      gBeta,
+      gBetaT,
+      gTPoly,
+    };
+
+    const metadata = {
+      field: r1cs.structure,
+      inputCount: r1cs.index.input - r1cs.index.one,
+      outputCount: r1cs.index.output - r1cs.index.input,
+      privateInputCount: r1cs.index.privateInput - r1cs.index.output,
+      midStart,
+      maxDegree,
+      constraintCount: r1cs.a.length,
+    };
+
+    return {
+      circuit: { aps, bps, cps, t },
+      key: pinocchioKey,
+      metadata,
+    };
+  };
+
+export const createZkProve =
+  (runtime: PinocchioRuntime) =>
+  (setup: ZkPinocchioSetup, witness: StructuralWitness<FiniteFieldElement>): ProveResult => {
+    const { circuit, key, metadata } = setup;
+    const { pointOps, sampleFieldElement } = runtime;
+    const { aps, bps, cps, t } = circuit;
+    const midStart = metadata.midStart;
+
+    // Witnessをベクトル形式に変換 w = [1, inputs..., outputs..., intermediates...]
+    const witnessVector = toWitnessVector(witness);
+    const ioCoeffs = witnessVector.slice(0, midStart); // 公開部分（IO）
+    const midCoeffs = witnessVector.slice(midStart); // 秘密部分（Mid）
+
+    const pFactory = new PolynomialFactory(metadata.field);
+
+    const combine = (polys: PolynomialOnFF[], coeffs: FiniteFieldElement[]) =>
+      linearCombinePolynomials(pFactory, polys, coeffs);
+
+    // A(x), B(x), C(x) をIO部分とMid部分に分けて計算します。
+    const aIOPoly = combine(aps.slice(0, midStart), ioCoeffs);
+    const bIOPoly = combine(bps.slice(0, midStart), ioCoeffs);
+    const cIOPoly = combine(cps.slice(0, midStart), ioCoeffs);
+
+    const aMidPoly = combine(aps.slice(midStart), midCoeffs);
+    const bMidPoly = combine(bps.slice(midStart), midCoeffs);
+    const cMidPoly = combine(cps.slice(midStart), midCoeffs);
+
+    // Zero-Knowledge化: ランダムなδを用いて A_mid, B_mid, C_mid に t(x) を加算する
+    const deltaA = sampleFieldElement(metadata.field);
+    const deltaB = sampleFieldElement(metadata.field);
+    const deltaC = sampleFieldElement(metadata.field);
+
+    const aMidZk = aMidPoly.add(t.scale(deltaA.n));
+    const bMidZk = bMidPoly.add(t.scale(deltaB.n));
+    const cMidZk = cMidPoly.add(t.scale(deltaC.n));
+
+    // IOとMidを結合して、完全な A(x), B(x), C(x) を得ます。
+    const aPoly = aIOPoly.add(aMidZk);
+    const bPoly = bIOPoly.add(bMidZk);
+    const cPoly = cIOPoly.add(cMidZk);
+
+    // QAPの核心となる方程式: P(x) = A(x) * B(x) - C(x)
+    const pPoly = aPoly.mul(bPoly).sub(cPoly);
+
+    // 因数定理より、すべてのゲートが正しければ P(x) は t(x) で割り切れるはずです。
+    // 商多項式 h(x) = P(x) / t(x) を求めます。
+    const [hPoly, remainder] = pPoly.divmod(t);
+
+    // 割り切れなければ、Witnessが間違っている（不正な計算をしている）ことになります。
+    if (!remainder.isZero()) throw new Error("Constraint polynomial is not divisible by target");
+
+    // (1) 商多項式 g^{h(s)} の計算
+    // h(x)の係数とCRS {g^{s^i}} を使って計算します。
+    const gH = evalPolyWithCrs(pointOps, hPoly, key.gOne, key.gSs);
+
+    // (2) 中間変数部分の多項式 A_{mid}(s) とそのαチェック項の計算
+    const gAMidBase = linearCombinationPoints(pointOps, key.crsApsMid.gPolyAtS, midCoeffs);
+    const gAMid = pointOps.add(gAMidBase, pointOps.scale(key.gTPoly, deltaA));
+
+    const gAlphaAMidBase = linearCombinationPoints(
+      pointOps,
+      key.crsApsMid.gAlphaPolyAtS,
+      midCoeffs
+    );
+    const gAlphaAMid = pointOps.add(gAlphaAMidBase, pointOps.scale(key.gAlphaAT, deltaA));
+
+    // (3) 中間変数部分の多項式 B_{mid}(s) とそのαチェック項の計算
+    const gBMidBase = linearCombinationPoints(pointOps, key.crsBpsMid.gPolyAtS, midCoeffs);
+    const gBMid = pointOps.add(gBMidBase, pointOps.scale(key.gTPoly, deltaB));
+
+    const gAlphaBMidBase = linearCombinationPoints(
+      pointOps,
+      key.crsBpsMid.gAlphaPolyAtS,
+      midCoeffs
+    );
+    const gAlphaBMid = pointOps.add(gAlphaBMidBase, pointOps.scale(key.gAlphaBT, deltaB));
+
+    // (4) 中間変数部分の多項式 C_{mid}(s) とそのαチェック項の計算
+    const gCMidBase = linearCombinationPoints(pointOps, key.crsCpsMid.gPolyAtS, midCoeffs);
+    const gCMid = pointOps.add(gCMidBase, pointOps.scale(key.gTPoly, deltaC));
+
+    const gAlphaCMidBase = linearCombinationPoints(
+      pointOps,
+      key.crsCpsMid.gAlphaPolyAtS,
+      midCoeffs
+    );
+    const gAlphaCMid = pointOps.add(gAlphaCMidBase, pointOps.scale(key.gAlphaCT, deltaC));
+
+    // (5) 係数一貫性チェック用 g^Z の計算 (β-Check)
+    // 全ての中間変数に対して、A, B, Cで同じ係数 w_k が使われていることを証明するための項です。
+    // Z = Σ_{k \in Mid} w_k * \beta(A_k(s) + B_k(s) + C_k(s))
+    const deltaSum = deltaA.add(deltaB).add(deltaC);
+    const gZBase = linearCombinationPoints(pointOps, key.betaBundles, midCoeffs);
+    const gZ = pointOps.add(gZBase, pointOps.scale(key.gBetaT, deltaSum));
 
     // IO部分と証明（Proof）を返却
     return {

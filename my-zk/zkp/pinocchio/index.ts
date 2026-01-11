@@ -1,7 +1,13 @@
 import { random } from "../../../topics/random";
 import { BLS12_381_G1, BLS12_381_G2 } from "../../curves/bls12-381";
 import { pairing } from "../../primitive/paring";
-import { createProve, createTrustedSetup, createVerify } from "./protocol";
+import {
+  createProve,
+  createTrustedSetup,
+  createVerify,
+  createZkProve,
+  createZkTrustedSetup,
+} from "./protocol";
 import { createPointOps } from "./operations";
 import { PinocchioConfig, PinocchioInstance, PinocchioRuntime } from "./types";
 
@@ -22,9 +28,13 @@ export const pinocchio = (config: PinocchioConfig): PinocchioInstance => {
   const runtime = createRuntime(config);
   const trustedSetup = createTrustedSetup(runtime);
   const prove = createProve(runtime);
+
+  const zkTrustedSetup = createZkTrustedSetup(runtime);
+  const zkProve = createZkProve(runtime);
+
   const verify = createVerify(runtime);
 
-  return { trustedSetup, prove, verify };
+  return { trustedSetup, prove, zkTrustedSetup, zkProve, verify };
 };
 
 export const defaultPinocchioConfig: PinocchioConfig = {
