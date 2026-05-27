@@ -66,7 +66,7 @@ print("P(3) =", PX(3))
 plot_poly(PX, -1, 4, "/home/sage/project/my-zk-python/lessons/r1cs-qap/px.png")
 
 tx = (t - 1)(t - 2)(t - 3)
-print("t(x)", t)
+print("t(x)", tx)
 
 hx = PX / tx
 print("h(x)", hx)
