@@ -1,3 +1,6 @@
+#![feature(generic_const_exprs)]
+#![allow(incomplete_features)]
+
 use std::{hint::black_box, ops::Add, ops::Mul, ops::Sub, time::Duration};
 
 use ark_bls12_381::{Fq as ArkBls12381Fq, Fr as ArkBls12381Fr};
@@ -63,6 +66,22 @@ const ARK_LABEL: &str = if cfg!(feature = "ark-asm") {
 const SAMPLES: usize = 1024;
 
 fn sample_limbs<C: FpConfig<N>, const N: usize>() -> Vec<[u64; N]> {
+    raw_limbs::<N>()
+        .into_iter()
+        .map(|limbs| {
+            let reduced = MyFp::<C, N>::new(limbs).to_limbs();
+            if reduced == [0u64; N] {
+                let mut one = [0u64; N];
+                one[0] = 1;
+                one
+            } else {
+                reduced
+            }
+        })
+        .collect()
+}
+
+fn raw_limbs<const N: usize>() -> Vec<[u64; N]> {
     let mut state = 0x243f_6a88_85a3_08d3u64 ^ ((N as u64) << 32);
     let mut samples = Vec::with_capacity(SAMPLES);
 
@@ -75,17 +94,21 @@ fn sample_limbs<C: FpConfig<N>, const N: usize>() -> Vec<[u64; N]> {
             *limb = state;
         }
 
-        let reduced = MyFp::<C, N>::new(limbs).to_limbs();
-        samples.push(if reduced == [0u64; N] {
-            let mut one = [0u64; N];
-            one[0] = 1;
-            one
-        } else {
-            reduced
-        });
+        samples.push(limbs);
     }
 
     samples
+}
+
+fn limbs_to_le_bytes<const N: usize>(limbs: [u64; N]) -> [u8; N * 8]
+where
+    [(); N * 8]:,
+{
+    let mut bytes = [0u8; N * 8];
+    for (i, limb) in limbs.into_iter().enumerate() {
+        bytes[i * 8..(i + 1) * 8].copy_from_slice(&limb.to_le_bytes());
+    }
+    bytes
 }
 
 fn make_input_pairs<C, A, const N: usize>() -> (Vec<MyFp<C, N>>, Vec<MyFp<C, N>>, Vec<A>, Vec<A>)
@@ -146,10 +169,25 @@ where
         + Copy
         + Add<Output = A>
         + Sub<Output = A>
-        + Mul<Output = A>,
+        + Mul<Output = A>
+        + From<u64>,
+    [(); N * 8]:,
 {
     let (my_lhs, my_rhs, ark_lhs, ark_rhs) = make_input_pairs::<C, A, N>();
     assert_matches_ark(&my_lhs, &my_rhs, &ark_lhs, &ark_rhs);
+    let raw_inputs = raw_limbs::<N>();
+
+    for limbs in raw_inputs.iter().take(32) {
+        let bytes = limbs_to_le_bytes(*limbs);
+        assert_eq!(
+            MyFp::<C, N>::new(*limbs).to_limbs(),
+            A::from_le_bytes_mod_order(&bytes).into_bigint().0
+        );
+        assert_eq!(
+            MyFp::<C, N>::from_u64(limbs[0]).to_limbs(),
+            A::from(limbs[0]).into_bigint().0
+        );
+    }
 
     let mut group = c.benchmark_group(format!("add/{name}"));
     group.warm_up_time(Duration::from_secs(1));
@@ -258,6 +296,85 @@ where
             })
         },
     );
+    group.finish();
+
+    let mut group = c.benchmark_group(format!("new/{name}"));
+    group.warm_up_time(Duration::from_secs(1));
+    group.measurement_time(Duration::from_secs(1));
+    group.sample_size(30);
+
+    group.bench_function("my_fp", |b| {
+        b.iter(|| {
+            let mut acc = MyFp::<C, N>::zero();
+            for limbs in &raw_inputs {
+                acc += black_box(MyFp::<C, N>::new(black_box(*limbs)));
+            }
+            black_box(acc)
+        })
+    });
+
+    group.bench_function(ARK_LABEL, |b| {
+        b.iter(|| {
+            let mut acc = A::zero();
+            for limbs in &raw_inputs {
+                let bytes = limbs_to_le_bytes(*limbs);
+                acc += black_box(A::from_le_bytes_mod_order(black_box(&bytes)));
+            }
+            black_box(acc)
+        })
+    });
+    group.finish();
+
+    let mut group = c.benchmark_group(format!("from_u64/{name}"));
+    group.warm_up_time(Duration::from_secs(1));
+    group.measurement_time(Duration::from_secs(1));
+    group.sample_size(30);
+
+    group.bench_function("my_fp", |b| {
+        b.iter(|| {
+            let mut acc = MyFp::<C, N>::zero();
+            for limbs in &raw_inputs {
+                acc += black_box(MyFp::<C, N>::from_u64(black_box(limbs[0])));
+            }
+            black_box(acc)
+        })
+    });
+
+    group.bench_function(ARK_LABEL, |b| {
+        b.iter(|| {
+            let mut acc = A::zero();
+            for limbs in &raw_inputs {
+                acc += black_box(A::from(black_box(limbs[0])));
+            }
+            black_box(acc)
+        })
+    });
+    group.finish();
+
+    let mut group = c.benchmark_group(format!("to_limbs/{name}"));
+    group.warm_up_time(Duration::from_secs(1));
+    group.measurement_time(Duration::from_secs(1));
+    group.sample_size(30);
+
+    group.bench_function("my_fp", |b| {
+        b.iter(|| {
+            let mut acc = 0u64;
+            for x in &my_lhs {
+                acc ^= black_box(x.to_limbs())[0];
+            }
+            black_box(acc)
+        })
+    });
+
+    group.bench_function(ARK_LABEL, |b| {
+        b.iter(|| {
+            let mut acc = 0u64;
+            for x in &ark_lhs {
+                acc ^= black_box(x.into_bigint().0)[0];
+            }
+            black_box(acc)
+        })
+    });
     group.finish();
 }
 

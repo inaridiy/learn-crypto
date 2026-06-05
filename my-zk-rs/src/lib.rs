@@ -120,14 +120,31 @@ impl<C: FpConfig<N>, const N: usize> Fp<C, N> {
 
     #[inline(always)]
     pub fn from_u64(x: u64) -> Self {
+        if x == 0 {
+            return Self::ZERO;
+        }
+        if x == 1 {
+            return Self::ONE;
+        }
+
         let mut limbs = [0u64; N];
         limbs[0] = x;
-        Self::new(limbs)
+        let reduced = reduce_limbs(limbs, C::MODULUS);
+        if high_limbs_are_zero(&reduced) {
+            Self::from_raw_montgomery(mont_mul_limb(
+                reduced[0],
+                Self::R2,
+                C::MODULUS,
+                Self::MONT_INV,
+            ))
+        } else {
+            Self::from_raw_montgomery(mont_mul(reduced, Self::R2, C::MODULUS, Self::MONT_INV))
+        }
     }
 
     #[inline(always)]
     pub fn to_limbs(self) -> [u64; N] {
-        mont_mul(self.limbs, one_limbs(), C::MODULUS, Self::MONT_INV)
+        mont_reduce(self.limbs, C::MODULUS, Self::MONT_INV)
     }
 
     #[inline(always)]
@@ -1136,6 +1153,40 @@ fn mont_mul<const N: usize>(
 }
 
 #[inline(always)]
+fn mont_reduce<const N: usize>(a: [u64; N], modulus: [u64; N], mont_inv: u64) -> [u64; N] {
+    if N == 4 {
+        let a4 = [a[0], a[1], a[2], a[3]];
+        let modulus4 = [modulus[0], modulus[1], modulus[2], modulus[3]];
+        let result4 = mont_reduce_4(a4, modulus4, mont_inv);
+        let mut out = [0u64; N];
+        out[..4].copy_from_slice(&result4);
+        return out;
+    }
+
+    mont_reduce_generic(a, modulus, mont_inv)
+}
+
+#[inline(always)]
+fn mont_mul_limb<const N: usize>(
+    a: u64,
+    b: [u64; N],
+    modulus: [u64; N],
+    mont_inv: u64,
+) -> [u64; N] {
+    if a == 0 {
+        return [0u64; N];
+    }
+
+    let mut t = MontScratch::<N>::zeroed();
+    let mut carry = 0u64;
+    for j in 0..N {
+        (t[j], carry) = a.carrying_mul_add(b[j], carry, t[j]);
+    }
+    add_to_high_word(&mut t, carry);
+    mont_reduce_scratch(t, modulus, mont_inv)
+}
+
+#[inline(always)]
 fn add_to_high_word_4(t: &mut [u64; 6], carry: u64) {
     let (sum, overflow) = t[4].carrying_add(carry, false);
     t[4] = sum;
@@ -1185,6 +1236,37 @@ fn mont_mul_4(a: [u64; 4], b: [u64; 4], modulus: [u64; 4], mont_inv: u64) -> [u6
 }
 
 #[inline(always)]
+fn mont_reduce_4(a: [u64; 4], modulus: [u64; 4], mont_inv: u64) -> [u64; 4] {
+    let mut t = [a[0], a[1], a[2], a[3], 0, 0];
+
+    for _ in 0..4 {
+        let m = t[0].wrapping_mul(mont_inv);
+        let mut carry = 0u64;
+        for j in 0..4 {
+            (t[j], carry) = m.carrying_mul_add(modulus[j], carry, t[j]);
+        }
+        debug_assert_eq!(t[0], 0);
+        add_to_high_word_4(&mut t, carry);
+
+        t[0] = t[1];
+        t[1] = t[2];
+        t[2] = t[3];
+        t[3] = t[4];
+        t[4] = t[5];
+        t[5] = 0;
+    }
+
+    let mut result = [t[0], t[1], t[2], t[3]];
+    debug_assert_eq!(t[4], 0);
+
+    if cmp_limbs(&result, &modulus) != Ordering::Less {
+        result = sub_raw(result, modulus).0;
+    }
+
+    result
+}
+
+#[inline(always)]
 fn add_to_high_word<const N: usize>(t: &mut MontScratch<N>, mut carry: u64) {
     let mut k = N;
     while carry != 0 {
@@ -1193,6 +1275,49 @@ fn add_to_high_word<const N: usize>(t: &mut MontScratch<N>, mut carry: u64) {
         carry = overflow as u64;
         k += 1;
     }
+}
+
+#[inline(always)]
+fn shift_scratch<const N: usize>(t: &mut MontScratch<N>) {
+    for j in 0..=N {
+        t[j] = t[j + 1];
+    }
+    t[N + 1] = 0;
+}
+
+#[inline(always)]
+fn mont_reduce_scratch<const N: usize>(
+    mut t: MontScratch<N>,
+    modulus: [u64; N],
+    mont_inv: u64,
+) -> [u64; N] {
+    for _ in 0..N {
+        let m = t[0].wrapping_mul(mont_inv);
+        let mut carry = 0u64;
+        for j in 0..N {
+            (t[j], carry) = m.carrying_mul_add(modulus[j], carry, t[j]);
+        }
+        debug_assert_eq!(t[0], 0);
+        add_to_high_word(&mut t, carry);
+        shift_scratch(&mut t);
+    }
+
+    let mut result = [0u64; N];
+    result.copy_from_slice(&t.limbs);
+    debug_assert_eq!(t[N], 0);
+
+    if cmp_limbs(&result, &modulus) != Ordering::Less {
+        result = sub_raw(result, modulus).0;
+    }
+
+    result
+}
+
+#[inline(always)]
+fn mont_reduce_generic<const N: usize>(a: [u64; N], modulus: [u64; N], mont_inv: u64) -> [u64; N] {
+    let mut t = MontScratch::<N>::zeroed();
+    t.limbs = a;
+    mont_reduce_scratch(t, modulus, mont_inv)
 }
 
 #[inline(always)]
@@ -1219,10 +1344,7 @@ fn mont_mul_generic<const N: usize>(
         debug_assert_eq!(t[0], 0);
         add_to_high_word(&mut t, carry);
 
-        for j in 0..=N {
-            t[j] = t[j + 1];
-        }
-        t[N + 1] = 0;
+        shift_scratch(&mut t);
     }
 
     let mut result = [0u64; N];
@@ -1238,10 +1360,60 @@ fn mont_mul_generic<const N: usize>(
 
 fn reduce_limbs<const N: usize>(x: [u64; N], modulus: [u64; N]) -> [u64; N] {
     if cmp_limbs(&x, &modulus) == Ordering::Less {
-        x
-    } else {
-        const_reduce(x, modulus)
+        return x;
     }
+
+    let mut reduced = x;
+    for _ in 0..fast_reduce_subtractions(&modulus) {
+        let (next, borrow) = sub_raw(reduced, modulus);
+        if borrow {
+            break;
+        }
+        if cmp_limbs(&next, &modulus) == Ordering::Less {
+            return next;
+        }
+        reduced = next;
+    }
+
+    const_reduce(x, modulus)
+}
+
+#[inline(always)]
+fn fast_reduce_subtractions<const N: usize>(modulus: &[u64; N]) -> usize {
+    let modulus_bits = limb_bit_len(modulus);
+    let unused_bits = N * 64 - modulus_bits;
+    let mut attempts = 1usize;
+    let mut i = 0;
+    while i <= unused_bits && attempts < 64 {
+        attempts <<= 1;
+        i += 1;
+    }
+    attempts
+}
+
+#[inline(always)]
+fn limb_bit_len<const N: usize>(limbs: &[u64; N]) -> usize {
+    let mut i = N;
+    while i > 0 {
+        i -= 1;
+        let limb = limbs[i];
+        if limb != 0 {
+            return i * 64 + (64 - limb.leading_zeros() as usize);
+        }
+    }
+    0
+}
+
+#[inline(always)]
+fn high_limbs_are_zero<const N: usize>(limbs: &[u64; N]) -> bool {
+    let mut i = 1;
+    while i < N {
+        if limbs[i] != 0 {
+            return false;
+        }
+        i += 1;
+    }
+    true
 }
 
 fn mask_unused_limb_bits<const N: usize>(limbs: &mut [u64; N], modulus_bits: usize) {
@@ -1434,6 +1606,7 @@ const fn div2<const N: usize>(mut value: [u64; N]) -> [u64; N] {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ark_bls12_381::Fq as ArkBls12381Fq;
     use ark_ff::{BigInt as ArkBigInt, MontBackend, MontConfig, PrimeField};
     use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
@@ -1443,6 +1616,16 @@ mod tests {
     struct ArkF25519Config;
 
     type ArkFp = ark_ff::Fp256<MontBackend<ArkF25519Config, 4>>;
+
+    #[derive(Debug)]
+    struct TestBls12381FqConfig;
+
+    impl FpConfig<6> for TestBls12381FqConfig {
+        const MODULUS: [u64; 6] = <ArkBls12381Fq as PrimeField>::MODULUS.0;
+        const GENERATOR: [u64; 6] = [2, 0, 0, 0, 0, 0];
+    }
+
+    type TestBls12381Fq = Fp<TestBls12381FqConfig, 6>;
 
     fn ark_from_limbs(limbs: [u64; NUM_LIMBS]) -> ArkFp {
         ArkFp::from_le_bytes_mod_order(&limbs_to_fixed_le_bytes(limbs))
@@ -1454,6 +1637,18 @@ mod tests {
             bytes[i * 8..(i + 1) * 8].copy_from_slice(&limb.to_le_bytes());
         }
         bytes
+    }
+
+    fn bls_limbs_to_fixed_le_bytes(limbs: [u64; 6]) -> [u8; 48] {
+        let mut bytes = [0u8; 48];
+        for (i, limb) in limbs.iter().enumerate() {
+            bytes[i * 8..(i + 1) * 8].copy_from_slice(&limb.to_le_bytes());
+        }
+        bytes
+    }
+
+    fn ark_bls_from_limbs(limbs: [u64; 6]) -> ArkBls12381Fq {
+        ArkBls12381Fq::from_le_bytes_mod_order(&bls_limbs_to_fixed_le_bytes(limbs))
     }
 
     fn ark_limbs(x: ArkFp) -> [u64; NUM_LIMBS] {
@@ -1500,6 +1695,40 @@ mod tests {
         let mut p_plus_five = MODULUS_LIMBS;
         p_plus_five[0] += 5;
         assert_eq!(Fp25519::new(p_plus_five).to_limbs(), [5, 0, 0, 0]);
+    }
+
+    #[test]
+    fn n6_constructors_match_ark_ff() {
+        assert_eq!(fast_reduce_subtractions(&TestBls12381FqConfig::MODULUS), 16);
+
+        let vectors = [
+            [0, 0, 0, 0, 0, 0],
+            [1, 0, 0, 0, 0, 0],
+            [u64::MAX, 0, 0, 0, 0, 0],
+            [u64::MAX, u64::MAX, u64::MAX, u64::MAX, u64::MAX, u64::MAX],
+            [
+                0x0123456789abcdef,
+                0xfedcba9876543210,
+                0x0f0f0f0f0f0f0f0f,
+                0xf0f0f0f0f0f0f0f0,
+                0xaaaaaaaa55555555,
+                0xffffffffffffffff,
+            ],
+        ];
+
+        for limbs in vectors {
+            assert_eq!(
+                TestBls12381Fq::new(limbs).to_limbs(),
+                ark_bls_from_limbs(limbs).into_bigint().0
+            );
+        }
+
+        for value in [0, 1, 42, u64::MAX] {
+            assert_eq!(
+                TestBls12381Fq::from_u64(value).to_limbs(),
+                ArkBls12381Fq::from(value).into_bigint().0
+            );
+        }
     }
 
     #[test]
