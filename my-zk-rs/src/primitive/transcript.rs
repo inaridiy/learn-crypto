@@ -2,7 +2,7 @@ use ark_ff::{Field, PrimeField};
 use ark_serialize::CanonicalSerialize;
 use sha2::{Digest, Sha256};
 
-use super::r1cs::Matrix;
+use super::matrix::Matrix;
 
 /// Fiat-Shamir 変換で使う最小限の transcript。
 ///

@@ -4,7 +4,7 @@ use std::ops::Index;
 use crate::primitive::MvPolynomial;
 
 use super::helpers::log2_ceil;
-use super::r1cs::Matrix;
+use super::matrix::Matrix;
 
 /// `N` 個の真偽値からなるブール点。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

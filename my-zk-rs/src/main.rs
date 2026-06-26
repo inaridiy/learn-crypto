@@ -67,8 +67,8 @@ where
     let mut transcript = init_transcript(&r1cs);
 
     let _rs = transcript.challenge_field::<F>(b"first-sumcheck");
-    let tassignment = mle_from_hypercube_evaluations(assignment);
-    let _bar_a = calc_bar_matrix(&r1cs.a, &tassignment);
+    let t_assignment = mle_from_hypercube_evaluations(assignment);
+    let _bar_a = calc_bar_matrix(&r1cs.a, &t_assignment);
 }
 
 pub fn main() {
@@ -98,6 +98,7 @@ pub fn main() {
         ],
         2,
     );
+
     let assignment = r1cs.assignment(
         &[3, 35].map(F::from), //
         &[9, 27, 30].map(F::from),
