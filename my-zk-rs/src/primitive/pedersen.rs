@@ -46,3 +46,28 @@ impl<G: CurveGroup, const SIZE: usize> Pedersen<G, SIZE> {
         commitment == rhs
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ark_bls12_381::{Fr as F, G1Projective, g1::Config};
+    use ark_ec::hashing::{curve_maps::wb::WBMap, map_to_curve_hasher::MapToCurveBasedHasher};
+    use ark_ff::field_hashers::DefaultFieldHasher;
+    use sha2::Sha256;
+
+    type G1Hasher =
+        MapToCurveBasedHasher<G1Projective, DefaultFieldHasher<Sha256, 128>, WBMap<Config>>;
+
+    #[test]
+    fn commit_verifies_with_matching_values_and_blind() {
+        let pedersen = Pedersen::<G1Projective, 2>::setup::<G1Hasher>(b"pedersen-test").unwrap();
+        let values = [F::from(3), F::from(35)];
+        let blind = F::from(9);
+
+        let commitment = pedersen.commit(values, blind);
+
+        assert!(pedersen.verify(commitment, values, blind));
+        assert!(!pedersen.verify(commitment, [F::from(3), F::from(36)], blind));
+        assert!(!pedersen.verify(commitment, values, F::from(10)));
+    }
+}
