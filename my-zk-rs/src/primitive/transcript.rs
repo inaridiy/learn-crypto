@@ -44,6 +44,15 @@ impl Transcript {
     where
         F: CanonicalSerialize,
     {
+        self.append_serializable(label, value);
+    }
+
+    /// Arkworks の canonical serialization で値を transcript に追加する。
+    #[inline]
+    pub fn append_serializable<T>(&mut self, label: &[u8], value: &T)
+    where
+        T: CanonicalSerialize,
+    {
         let mut bytes = Vec::with_capacity(value.uncompressed_size());
         value
             .serialize_uncompressed(&mut bytes)

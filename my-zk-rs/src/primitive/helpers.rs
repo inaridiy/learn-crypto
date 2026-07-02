@@ -1,3 +1,4 @@
+use ark_ec::CurveGroup;
 use ark_ff::Field;
 
 use super::{Monomial, MvPolynomial};
@@ -74,9 +75,28 @@ pub const fn log2_ceil(value_count: usize) -> usize {
     usize::BITS as usize - (value_count - 1).leading_zeros() as usize
 }
 
+#[inline]
+pub fn inner_product<F: Field>(lhs: &[F], rhs: &[F]) -> F {
+    assert_eq!(lhs.len(), rhs.len(), "inner-product vector lengths differ");
+    lhs.iter()
+        .zip(rhs)
+        .fold(F::zero(), |acc, (lhs, rhs)| acc + *lhs * rhs)
+}
+
+#[inline]
+pub fn msm_with_bases<G: CurveGroup>(values: &[G::ScalarField], bases: &[G::Affine]) -> G {
+    G::msm_unchecked(bases, values)
+}
+
+#[inline]
+pub fn msm<G: CurveGroup>(values: &[G::ScalarField], generators: &[G]) -> G {
+    let bases = G::batch_convert_to_mul_base(generators);
+    msm_with_bases(values, &bases)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{ConstantLike, OneLike, VariableLike, ZeroLike, log2_ceil};
+    use super::{ConstantLike, OneLike, VariableLike, ZeroLike, inner_product, log2_ceil};
     use crate::primitive::{Monomial, MvPolynomial};
     use ark_bls12_381::Fr as F;
 
@@ -113,5 +133,13 @@ mod tests {
         assert_eq!(log2_ceil(5), 3);
         assert_eq!(log2_ceil(8), 3);
         assert_eq!(log2_ceil(9), 4);
+    }
+
+    #[test]
+    fn inner_product_multiplies_and_sums_pairs() {
+        let lhs = [F::from(2), F::from(3), F::from(5)];
+        let rhs = [F::from(7), F::from(11), F::from(13)];
+
+        assert_eq!(inner_product(&lhs, &rhs), F::from(112));
     }
 }

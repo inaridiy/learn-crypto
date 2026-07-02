@@ -67,4 +67,12 @@ where
     pub fn mul_vector(&self, vector: &[F; 1 << COL_BITS]) -> [F; 1 << ROW_BITS] {
         std::array::from_fn(|row_index| self.dot_row(row_index, vector))
     }
+
+    pub fn left_mul_vector(&self, vector: &[F; 1 << ROW_BITS]) -> [F; 1 << COL_BITS] {
+        std::array::from_fn(|col_index| {
+            (0..(1 << ROW_BITS)).fold(F::zero(), |acc, row_index| {
+                acc + self.entries[row_index][col_index] * vector[row_index]
+            })
+        })
+    }
 }

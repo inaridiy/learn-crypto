@@ -66,6 +66,20 @@ impl<const N: usize> BoolPoint<N> {
 
         eq
     }
+
+    #[inline]
+    pub fn eq_eval<F: Field>(&self, point: &[F; N]) -> F {
+        self.coordinates
+            .iter()
+            .enumerate()
+            .fold(F::one(), |acc, (i, bit)| {
+                if *bit {
+                    acc * point[i]
+                } else {
+                    acc * (F::one() - point[i])
+                }
+            })
+    }
 }
 
 impl<const N: usize> From<[bool; N]> for BoolPoint<N> {
@@ -124,6 +138,12 @@ where
     #[inline]
     pub const fn is_empty() -> bool {
         false
+    }
+
+    /// 各ブール点 `w` について equality polynomial `eq_w(point)` をテーブル順に並べる。
+    #[inline]
+    pub fn eq_evaluations<F: Field>(point: &[F; N]) -> [F; 1 << N] {
+        std::array::from_fn(|i| BoolPoint::<N>::from(i).eq_eval(point))
     }
 }
 
@@ -323,6 +343,34 @@ mod tests {
         assert_eq!(
             teq.eval(&BoolPoint::from([true, true]).to_field_point()),
             F::ZERO
+        );
+    }
+
+    #[test]
+    fn eq_eval_matches_teq_eval() {
+        let point = [f(2), f(3), f(5)];
+
+        for bool_point in BoolHyperCube::<3>::iter() {
+            assert_eq!(
+                bool_point.eq_eval(&point),
+                bool_point.teq::<F>().eval(&point)
+            );
+        }
+    }
+
+    #[test]
+    fn bool_hypercube_eq_evaluations_are_in_table_order() {
+        let point = [f(2), f(3)];
+        let evaluations = BoolHyperCube::<2>::eq_evaluations(&point);
+
+        assert_eq!(
+            evaluations,
+            [
+                (F::ONE - point[0]) * (F::ONE - point[1]),
+                point[0] * (F::ONE - point[1]),
+                (F::ONE - point[0]) * point[1],
+                point[0] * point[1],
+            ]
         );
     }
 

@@ -72,7 +72,7 @@ where
 }
 
 pub fn main() {
-    use ark_bls12_381::{Fr as F, G1Projective};
+    use ark_bls12_381::Fr as F;
 
     // out = x^3 + x + 5
     // w = [x,out,1,i1,i2,i3]
