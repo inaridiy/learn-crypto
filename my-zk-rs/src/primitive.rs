@@ -11,7 +11,7 @@ pub use helpers::{ConstantLike, OneLike, VariableLike, ZeroLike, inner_product, 
 pub use matrix::Matrix;
 pub use mle::{
     BoolHyperCube, BoolPoint, DenseFnOverBoolHyperCube, mle_from_evaluations,
-    mle_from_hypercube_evaluations, mle_from_matrix, mle_from_matrix_row,
+    mle_from_hypercube_evaluations, mle_from_matrix,
 };
 pub use poly::{Monomial, MvPolynomial};
 pub use r1cs::{R1CS, R1CSStructure};

@@ -257,27 +257,9 @@ where
     DenseFnOverBoolHyperCube::<F, { ROW_BITS + COL_BITS }>::new(evaluations).mle()
 }
 
-/// Matrix を `(row, col)` の MLE と見て、row 側を固定した column 側の MLE を返す。
-#[inline]
-pub fn mle_from_matrix_row<F, const ROW_BITS: usize, const COL_BITS: usize>(
-    matrix: &Matrix<F, ROW_BITS, COL_BITS>,
-    row: &[F; ROW_BITS],
-) -> MvPolynomial<F, COL_BITS>
-where
-    F: Field,
-    [(); 1 << ROW_BITS]:,
-    [(); 1 << COL_BITS]:,
-    [(); 1 << (ROW_BITS + COL_BITS)]:,
-{
-    mle_from_matrix(matrix).curry_prefix(row)
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{
-        BoolHyperCube, BoolPoint, DenseFnOverBoolHyperCube, mle_from_evaluations,
-        mle_from_matrix_row,
-    };
+    use super::{BoolHyperCube, BoolPoint, DenseFnOverBoolHyperCube, mle_from_evaluations};
     use crate::primitive::Matrix;
     use ark_bls12_381::Fr as F;
     use ark_ff::{AdditiveGroup, Field};
@@ -393,23 +375,6 @@ mod tests {
         assert_eq!(mle.eval(&[f(1), f(0)]), f(5));
         assert_eq!(mle.eval(&[f(0), f(1)]), f(7));
         assert_eq!(mle.eval(&[f(1), f(1)]), f(0));
-    }
-
-    #[test]
-    fn mle_from_matrix_row_fixes_row_and_extends_columns() {
-        let matrix = Matrix::<F>::from_unpadded_usize([[3, 5, 7], [11, 13, 17]]);
-
-        let row0 = mle_from_matrix_row(&matrix, &[f(0)]);
-        assert_eq!(row0.eval(&[f(0), f(0)]), f(3));
-        assert_eq!(row0.eval(&[f(1), f(0)]), f(5));
-        assert_eq!(row0.eval(&[f(0), f(1)]), f(7));
-        assert_eq!(row0.eval(&[f(1), f(1)]), f(0));
-
-        let row1 = mle_from_matrix_row(&matrix, &[f(1)]);
-        assert_eq!(row1.eval(&[f(0), f(0)]), f(11));
-        assert_eq!(row1.eval(&[f(1), f(0)]), f(13));
-        assert_eq!(row1.eval(&[f(0), f(1)]), f(17));
-        assert_eq!(row1.eval(&[f(1), f(1)]), f(0));
     }
 
     #[test]

@@ -9,11 +9,11 @@ use ark_std::{UniformRand, rand::Rng};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HyraxPCSProof<G: CurveGroup> {
-    result_com: G,
-    m_minus_vec: Vec<G>,
-    m_plus_vec: Vec<G>,
-    schnorr_com: (G, G),
-    schnorr_res: (G::ScalarField, G::ScalarField),
+    pub result_com: G,
+    pub m_minus_vec: Vec<G>,
+    pub m_plus_vec: Vec<G>,
+    pub schnorr_com: (G, G),
+    pub schnorr_res: (G::ScalarField, G::ScalarField),
 }
 
 // Multiliner多項式の変数数 = HALF_VARS_BITS * 2
@@ -95,6 +95,16 @@ where
 
     fn commit_scalar(&self, value: &G::ScalarField, r: &G::ScalarField) -> G {
         self.scalar * value + self.blind * r
+    }
+
+    /// 評価値 `value` に対する Pedersen commitment を計算する。
+    ///
+    /// Verifier が「opening proof の `result_com` は主張している評価値 `value` に
+    /// 対応している」ことを確認するために使う（`result_com` そのものは検証していない
+    /// 生の値なので、外部で期待するコミットメントと比較する必要がある）。
+    #[inline]
+    pub fn commit_value(&self, value: &G::ScalarField, blind: &G::ScalarField) -> G {
+        self.commit_scalar(value, blind)
     }
 
     pub fn commit(
