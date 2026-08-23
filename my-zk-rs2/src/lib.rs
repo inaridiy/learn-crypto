@@ -3,4 +3,3 @@
 #![allow(long_running_const_eval)]
 
 pub mod primitive;
-pub mod protocol;

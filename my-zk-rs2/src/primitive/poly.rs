@@ -553,6 +553,52 @@ impl<F: Field, const N: usize> MvPolynomial<F, N> {
     }
 }
 
+impl<F: Field> MvPolynomial<F, 1> {
+    /// 一変数多項式の係数列 $(c_0, c_1, \ldots, c_{\mathrm{len}-1})$ を返す。
+    /// $p(x) = \sum_k c_k x^k$。
+    pub fn coefficients(&self, len: usize) -> Vec<F> {
+        let mut coefficients = vec![F::zero(); len];
+
+        for (monomial, coeff) in self.terms() {
+            let exp = monomial.exponent(0);
+            assert!(
+                exp < len,
+                "the polynomial degree exceeds the requested length"
+            );
+            coefficients[exp] = *coeff;
+        }
+
+        coefficients
+    }
+}
+
+/// 相異なる点 $(x_i, y_i)$ をすべて通る、次数 `< points.len()` の唯一の一変数多項式を
+/// Lagrange 補間で構成する。
+///
+/// $L(x) = \sum_i y_i \prod_{j \neq i} \frac{x - x_j}{x_i - x_j}$
+pub fn lagrange<F: Field>(points: &[(F, F)]) -> MvPolynomial<F, 1> {
+    let x = MvPolynomial::<F, 1>::variable(0);
+    let mut result = MvPolynomial::zero();
+
+    for (i, (x_i, y_i)) in points.iter().enumerate() {
+        let mut basis = MvPolynomial::constant(*y_i);
+        for (j, (x_j, _)) in points.iter().enumerate() {
+            if i == j {
+                continue;
+            }
+
+            let denominator = (*x_i - x_j)
+                .inverse()
+                .expect("interpolation points must be distinct");
+            basis *= (x.clone() - MvPolynomial::constant(*x_j)).scale(denominator);
+        }
+
+        result += basis;
+    }
+
+    result
+}
+
 impl<F: Field + fmt::Display, const N: usize> fmt::Display for MvPolynomial<F, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_zero() {
@@ -809,7 +855,7 @@ impl<F: Field, const N: usize> Mul<F> for &MvPolynomial<F, N> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Monomial, MvPolynomial};
+    use super::{Monomial, MvPolynomial, lagrange};
     use ark_bls12_381::Fr as F;
 
     type Poly<const N: usize> = MvPolynomial<F, N>;
@@ -871,6 +917,25 @@ mod tests {
         let poly = (&x + &one).pow(3);
 
         assert_eq!(poly.eval(&[f(2), f(99)]), f(27));
+    }
+
+    #[test]
+    fn lagrange_interpolation_recovers_the_polynomial() {
+        // p(x) = 3x^2 + 2x + 5 を x = 0, 1, 2 の評価値から復元する。
+        let p = |x: F| f(3) * x * x + f(2) * x + f(5);
+        let points = [f(0), f(1), f(2)].map(|x| (x, p(x)));
+
+        let interpolated = lagrange(&points);
+
+        assert_eq!(interpolated.degrees(), [2]);
+        assert_eq!(interpolated.eval(&[f(7)]), p(f(7)));
+    }
+
+    #[test]
+    fn lagrange_interpolation_of_zero_evaluations_is_the_zero_polynomial() {
+        let points = [(f(0), f(0)), (f(1), f(0)), (f(2), f(0))];
+
+        assert!(lagrange(&points).is_zero());
     }
 
     #[test]

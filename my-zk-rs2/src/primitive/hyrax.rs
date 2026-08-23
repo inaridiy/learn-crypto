@@ -1,7 +1,9 @@
-use crate::primitive::{BoolHyperCube, Matrix, Transcript, helpers::msm_with_bases, inner_product};
+use crate::primitive::{
+    BoolHyperCube, Matrix, Pedersen, Transcript, helpers::msm_with_bases, inner_product,
+};
 
 use ark_ec::{
-    AffineRepr, CurveGroup,
+    CurveGroup,
     hashing::{HashToCurve, HashToCurveError},
 };
 use ark_ff::{Field, Zero};
@@ -25,10 +27,10 @@ pub struct HyraxPCS<G: CurveGroup, const HALF_VARS_BITS: usize>
 where
     [(); 1 << HALF_VARS_BITS]:,
 {
-    vec: [G; 1 << HALF_VARS_BITS], // generators for vector commitment
-    vec_mul_bases: Vec<G::Affine>,
-    scalar: G, // generator for scalar commitment
-    blind: G,  // pedersen blinds for vector commitment and scalar commitment
+    /// 評価テーブルの行 (長さ $2^{\mathrm{HALF\_VARS\_BITS}}$) 用の Pedersen committer。
+    pub rows: Pedersen<G>,
+    /// スカラー (評価値など) 用の Pedersen committer。blind 生成元は `rows` と共有。
+    pub scalar: Pedersen<G>,
 }
 
 pub type HyraxPCSCommitment<G: CurveGroup, const HALF_VARS_BITS: usize> = [G; 1 << HALF_VARS_BITS];
@@ -56,55 +58,19 @@ where
         }))
     }
 
-    fn setup_vec_generators<H: HashToCurve<G>>(
-        hasher: &H,
-    ) -> Result<[G; 1 << HALF_VARS_BITS], HashToCurveError> {
-        let generators: [G; 1 << HALF_VARS_BITS] = (0..(1 << HALF_VARS_BITS))
-            .map(|i| {
-                Ok(hasher
-                    .hash(format!("hyrax:vec#{i}").as_bytes())?
-                    .into_group())
-            })
-            .collect::<Result<Vec<_>, HashToCurveError>>()?
-            .try_into()
-            .unwrap();
-
-        Ok(generators)
-    }
-
     pub fn setup<H: HashToCurve<G>>(domain: &[u8]) -> Result<Self, HashToCurveError> {
-        let hasher = H::new(domain)?;
+        let rows = Pedersen::setup::<H>(domain, "hyrax-row", 1 << HALF_VARS_BITS)?;
+        let scalar = Pedersen::setup::<H>(domain, "hyrax-scalar", 1)?;
 
-        let vec = Self::setup_vec_generators(&hasher)?;
-        let vec_mul_bases = G::batch_convert_to_mul_base(&vec);
-
-        let scalar = hasher.hash(b"hyrax:h")?.into_group();
-        let blind = hasher.hash(b"hyrax:u")?.into_group();
-
-        Ok(Self {
-            vec,
-            vec_mul_bases,
-            scalar,
-            blind,
-        })
+        Ok(Self { rows, scalar })
     }
 
     fn commit_vec(&self, values: &[G::ScalarField], r: &G::ScalarField) -> G {
-        msm_with_bases::<G>(values, &self.vec_mul_bases) + self.blind * r
+        self.rows.commit(values, r)
     }
 
     fn commit_scalar(&self, value: &G::ScalarField, r: &G::ScalarField) -> G {
-        self.scalar * value + self.blind * r
-    }
-
-    /// 評価値 `value` に対する Pedersen commitment を計算する。
-    ///
-    /// Verifier が「opening proof の `result_com` は主張している評価値 `value` に
-    /// 対応している」ことを確認するために使う（`result_com` そのものは検証していない
-    /// 生の値なので、外部で期待するコミットメントと比較する必要がある）。
-    #[inline]
-    pub fn commit_value(&self, value: &G::ScalarField, blind: &G::ScalarField) -> G {
-        self.commit_scalar(value, blind)
+        self.scalar.commit_scalar(value, r)
     }
 
     pub fn commit(
@@ -172,14 +138,14 @@ where
         let mut blind = inner_product(com_blinds, &l) + *result_blind;
 
         let result_com = self.commit_scalar(&result, result_blind);
-        let ipa_statement = msm_with_bases::<G>(&u, &self.vec_mul_bases)
-            + self.scalar * result
-            + self.blind * blind;
+        let ipa_statement = msm_with_bases::<G>(&u, &self.rows.mul_bases)
+            + self.scalar.generators[0] * result
+            + self.rows.blind * blind;
 
         Self::append_statement(transcript, com, point, &ipa_statement, &result_com);
 
-        let mut g = self.vec.to_vec();
-        let mut g_mul_bases = self.vec_mul_bases.to_vec();
+        let mut g = self.rows.generators.to_vec();
+        let mut g_mul_bases = self.rows.mul_bases.to_vec();
 
         let mut m_minus_vec = Vec::with_capacity(HALF_VARS_BITS);
         let mut m_plus_vec = Vec::with_capacity(HALF_VARS_BITS);
@@ -194,11 +160,11 @@ where
             let (g_l_mul_bases, g_r_mul_bases) = g_mul_bases.split_at(half);
 
             let m_minus = msm_with_bases::<G>(u_l, g_r_mul_bases)
-                + self.scalar * inner_product(u_l, q_r)
-                + self.blind * r_minus;
+                + self.scalar.generators[0] * inner_product(u_l, q_r)
+                + self.rows.blind * r_minus;
             let m_plus = msm_with_bases::<G>(u_r, g_l_mul_bases)
-                + self.scalar * inner_product(u_r, q_l)
-                + self.blind * r_plus;
+                + self.scalar.generators[0] * inner_product(u_r, q_l)
+                + self.rows.blind * r_plus;
 
             transcript.append_serializable(b"m_minus", &m_minus);
             transcript.append_serializable(b"m_plus", &m_plus);
@@ -230,8 +196,8 @@ where
             G::ScalarField::rand(rng),
         );
 
-        let com1 = g[0] * r1 + self.blind * r2;
-        let com2 = self.scalar * r1 + self.blind * r3;
+        let com1 = g[0] * r1 + self.rows.blind * r2;
+        let com2 = self.scalar.generators[0] * r1 + self.rows.blind * r3;
 
         transcript.append_serializable(b"com1", &com1);
         transcript.append_serializable(b"com2", &com2);
@@ -276,7 +242,7 @@ where
         Self::append_statement(transcript, com, point, &statement, &proof.result_com);
 
         let mut q = r.to_vec();
-        let mut g = self.vec.to_vec();
+        let mut g = self.rows.generators.to_vec();
 
         for (m_minus, m_plus) in proof.m_minus_vec.iter().zip(&proof.m_plus_vec) {
             transcript.append_serializable(b"m_minus", m_minus);
@@ -311,7 +277,7 @@ where
         }
         let (z1, z2) = proof.schnorr_res;
 
-        g[0] * z1 + self.scalar * (q_final * z1) + self.blind * z2
+        g[0] * z1 + self.scalar.generators[0] * (q_final * z1) + self.rows.blind * z2
             == com1 + com2 * q_final + statement * (e * q_final)
     }
 }
