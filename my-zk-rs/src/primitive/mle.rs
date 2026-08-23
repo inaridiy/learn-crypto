@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use ark_ff::Field;
 
 fn hypercube_size(vars: usize) -> usize {
-    debug_assert!(
+    assert!(
         vars < usize::BITS as usize,
         "too many variables for usize indexing"
     );
@@ -58,14 +58,24 @@ impl<F: Field> EqPoly<F> {
 
     pub fn table(&self) -> Vec<F> {
         let size = hypercube_size(self.vars());
-        let mut point = vec![F::zero(); self.vars()];
+        let mut result = vec![F::zero(); size];
+        result[0] = F::one();
 
-        (0..size)
-            .map(|index| {
-                set_index_to_point(index, &mut point);
-                self.eval(&point)
-            })
-            .collect()
+        let mut block = 1;
+        for &r in &self.r {
+            let one_minus_r = F::one() - r;
+
+            for i in 0..block {
+                result[i + block] = result[i] * r;
+            }
+            for i in 0..block {
+                result[i] *= one_minus_r;
+            }
+
+            block *= 2;
+        }
+
+        result
     }
 }
 
