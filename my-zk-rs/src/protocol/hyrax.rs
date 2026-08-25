@@ -35,7 +35,6 @@ pub struct HyraxPCSCommitment<G: CurveGroup> {
 pub struct HyraxPCSProof<G: CurveGroup> {
     /// `m(r)` への hiding Pedersen commitment。
     pub result_com: G,
-    /// 行射影と `result_com` の dot-product relation の証明。
     pub ipa: InnerProductProof<G>,
 }
 
@@ -88,15 +87,25 @@ impl<G: CurveGroup> HyraxPCS<G> {
         HyraxPCSCommitment { rows }
     }
 
-    fn equality_vectors(
-        &self,
+    fn row_vars(&self) -> usize {
+        debug_assert!(self.rows.len().is_power_of_two());
+        self.rows.len().ilog2() as usize
+    }
+
+    fn append_statement(
+        transcript: &mut Transcript,
+        commitment: &HyraxPCSCommitment<G>,
         point: &[G::ScalarField],
-    ) -> (Vec<G::ScalarField>, Vec<G::ScalarField>) {
-        let split = self.row_vars();
-        (
-            EqPoly::new(point[..split].to_vec()).table(),
-            EqPoly::new(point[split..].to_vec()).table(),
-        )
+        result_com: &G,
+    ) {
+        transcript.append_usize(b"hyrax-square-size", commitment.rows.len());
+        for row in &commitment.rows {
+            transcript.append_serializable(b"hyrax-row-commitment", row);
+        }
+        for coordinate in point {
+            transcript.append_serializable(b"hyrax-point", coordinate);
+        }
+        transcript.append_serializable(b"hyrax-result-commitment", result_com);
     }
 
     /// 点 `point` での評価証明を作る(PCS の `Open`)。
@@ -116,9 +125,9 @@ impl<G: CurveGroup> HyraxPCS<G> {
     {
         self.assert_opening_shape(commitment, poly, com_blinds, point);
 
-        let row_vars = self.row_vars();
+        let split = self.row_vars();
         let mut row_reduced_poly = poly.clone();
-        for &coordinate in &point[..row_vars] {
+        for &coordinate in &point[..split] {
             row_reduced_poly.fold(coordinate);
         }
         let row_reduced_evaluations = row_reduced_poly.to_evaluations();
@@ -127,7 +136,10 @@ impl<G: CurveGroup> HyraxPCS<G> {
             self.rows.len(),
             "partially evaluated polynomial does not match a Hyrax row"
         );
-        let (row_weights, column_weights) = self.equality_vectors(point);
+        let (row_weights, column_weights) = (
+            EqPoly::new(point[..split].to_vec()).table(),
+            EqPoly::new(point[split..].to_vec()).table(),
+        );
         let row_reduced_blind = inner_product(com_blinds, &row_weights);
         let row_reduced_commitment = inner_product(&commitment.rows, &row_weights);
         let result = inner_product(&row_reduced_evaluations, &column_weights);
@@ -158,15 +170,18 @@ impl<G: CurveGroup> HyraxPCS<G> {
         proof: &HyraxPCSProof<G>,
         transcript: &mut Transcript,
     ) -> bool {
-        let point_vars = 2 * self.row_vars();
+        let split = self.row_vars();
         if commitment.rows.len() != self.rows.len()
-            || point.len() != point_vars
+            || point.len() != 2 * split
             || self.rows.blind != self.scalar.blind
         {
             return false;
         }
 
-        let (row_weights, column_weights) = self.equality_vectors(point);
+        let (row_weights, column_weights) = (
+            EqPoly::new(point[..split].to_vec()).table(),
+            EqPoly::new(point[split..].to_vec()).table(),
+        );
         let row_reduced_commitment = inner_product(&commitment.rows, &row_weights);
 
         Self::append_statement(transcript, commitment, point, &proof.result_com);
@@ -178,11 +193,6 @@ impl<G: CurveGroup> HyraxPCS<G> {
             &proof.result_com,
             transcript,
         )
-    }
-
-    fn row_vars(&self) -> usize {
-        debug_assert!(self.rows.len().is_power_of_two());
-        self.rows.len().ilog2() as usize
     }
 
     fn assert_poly_shape<P>(&self, poly: &P)
@@ -221,22 +231,6 @@ impl<G: CurveGroup> HyraxPCS<G> {
             poly.vars(),
             "evaluation point dimension does not match the polynomial"
         );
-    }
-
-    fn append_statement(
-        transcript: &mut Transcript,
-        commitment: &HyraxPCSCommitment<G>,
-        point: &[G::ScalarField],
-        result_com: &G,
-    ) {
-        transcript.append_usize(b"hyrax-square-size", commitment.rows.len());
-        for row in &commitment.rows {
-            transcript.append_serializable(b"hyrax-row-commitment", row);
-        }
-        for coordinate in point {
-            transcript.append_serializable(b"hyrax-point", coordinate);
-        }
-        transcript.append_serializable(b"hyrax-result-commitment", result_com);
     }
 }
 
@@ -363,7 +357,7 @@ mod tests {
         assert!(!pcs.verify(&commitment, &point, &proof, &mut transcript));
 
         let (pcs, _, commitment, point, _, mut proof) = prove_example();
-        proof.ipa.z2 += F::from(1);
+        proof.ipa.dot_product.z_beta += F::from(1);
         let mut transcript = Transcript::new(b"hyrax-opening");
         assert!(!pcs.verify(&commitment, &point, &proof, &mut transcript));
     }
