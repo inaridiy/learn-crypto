@@ -8,28 +8,19 @@ use crate::primitive::Matrix;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct R1CSStructure<F: Field> {
     pub num_constraints: usize,
-    pub num_vars: usize,
     pub num_io: usize,
+    pub num_witness: usize,
     _f: PhantomData<F>,
 }
 
 impl<F: Field> R1CSStructure<F> {
-    pub fn new(num_constraints: usize, num_vars: usize, num_io: usize) -> Self {
-        assert!(
-            num_io < num_vars,
-            "R1CS structure must reserve a variable for the constant one"
-        );
-
+    pub fn new(num_constraints: usize, num_io: usize, num_witness: usize) -> Self {
         Self {
             num_constraints,
-            num_vars,
             num_io,
+            num_witness,
             _f: PhantomData,
         }
-    }
-
-    fn num_witness(&self) -> usize {
-        self.num_vars - self.num_io - 1
     }
 }
 

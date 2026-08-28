@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use ark_ff::Field;
 
 use super::helpers::inner_product;
-use super::mle::EqPoly;
+use super::mle::{EqPoly, MultilinearPoly};
 
 pub trait Matrix<F: Field> {
     fn rows(&self) -> usize;
@@ -36,8 +36,8 @@ pub trait Matrix<F: Field> {
     /// Multilinear extension の評価
     /// $\tilde{M}(r_x, r_y) = \mathrm{eq}(r_x)^\top M \, \mathrm{eq}(r_y)$。
     fn eval_mle(&self, rx: &[F], ry: &[F]) -> F {
-        let row_weights = EqPoly::new(rx.to_vec()).table();
-        let col_weights = EqPoly::new(ry.to_vec()).table();
+        let row_weights = EqPoly::new(rx.to_vec()).to_evals();
+        let col_weights = EqPoly::new(ry.to_vec()).to_evals();
 
         inner_product(&self.mul_vec(&col_weights), &row_weights)
     }

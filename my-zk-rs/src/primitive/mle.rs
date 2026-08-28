@@ -59,7 +59,7 @@ impl<F: Field> EqPoly<F> {
 
     /// Hypercube 全点での評価表。`table()[i] == eval_index(i)` を
     /// $O(2^n)$ で一括計算する。
-    pub fn table(&self) -> Vec<F> {
+    pub fn to_evals(&self) -> Vec<F> {
         let size = hypercube_size(self.vars());
         let mut result = vec![F::zero(); size];
         result[0] = F::one();
@@ -80,13 +80,19 @@ impl<F: Field> EqPoly<F> {
 
         result
     }
+
+    pub fn to_dense_mlp(&self) -> DenseMultilinearPoly<F> {
+        DenseMultilinearPoly::new(self.to_evals(), self.vars())
+    }
 }
 
 pub trait MultilinearPoly<F: Field> {
     fn vars(&self) -> usize;
 
     /// Boolean hypercube 上の評価値を、`x_0` を最下位 bit とする順序で返す。
-    fn to_evaluations(&self) -> Vec<F>;
+    fn to_evals(&self) -> Vec<F>;
+
+    fn to_nonzero_evals(&self) -> impl Iterator<Item = F>;
 
     /// $\tilde{f}(\vec{r}) = \sum_i f(i) \cdot \mathrm{eq}(\vec{r}, \mathrm{bits}(i))$。
     fn eval(&self, point: &[F]) -> F {
@@ -96,8 +102,8 @@ pub trait MultilinearPoly<F: Field> {
             "point dimension does not match polynomial"
         );
 
-        let weights = EqPoly::new(point.to_vec()).table();
-        inner_product(&self.to_evaluations(), &weights)
+        let weights = EqPoly::new(point.to_vec()).to_evals();
+        inner_product(&self.to_evals(), &weights)
     }
 
     /// 最下位変数 `x_0` に `r` を代入し、変数を一つ減らす。
@@ -147,8 +153,12 @@ impl<F: Field> MultilinearPoly<F> for DenseMultilinearPoly<F> {
         self.vars
     }
 
-    fn to_evaluations(&self) -> Vec<F> {
+    fn to_evals(&self) -> Vec<F> {
         self.evals.clone()
+    }
+
+    fn to_nonzero_evals(&self) -> impl Iterator<Item = F> {
+        self.evals.iter().copied().filter(|value| !value.is_zero())
     }
 
     fn fold(&mut self, r: F) {
@@ -194,7 +204,7 @@ impl<F: Field> SparseMultilinearPoly<F> {
     }
 
     pub fn to_dense(&self) -> DenseMultilinearPoly<F> {
-        DenseMultilinearPoly::new(self.to_evaluations(), self.vars)
+        DenseMultilinearPoly::new(self.to_evals(), self.vars)
     }
 }
 
@@ -203,12 +213,17 @@ impl<F: Field> MultilinearPoly<F> for SparseMultilinearPoly<F> {
         self.vars
     }
 
-    fn to_evaluations(&self) -> Vec<F> {
+    // ここ、Sparseじゃねぇよな。
+    fn to_evals(&self) -> Vec<F> {
         let mut evals = vec![F::zero(); hypercube_size(self.vars)];
         for (&index, &value) in &self.evals {
             evals[index] = value;
         }
         evals
+    }
+
+    fn to_nonzero_evals(&self) -> impl Iterator<Item = F> {
+        self.evals.values().copied()
     }
 
     /// 非零成分だけを走る $O(\mathrm{nnz} \cdot n)$ 版。
@@ -250,13 +265,22 @@ mod tests {
     use ark_bls12_381::Fr as F;
 
     #[test]
-    fn eq_table_matches_pointwise_evaluations() {
+    fn eq_evals_match_pointwise_evaluations() {
         let eq = EqPoly::new(vec![F::from(3), F::from(5), F::from(7)]);
-        let table = eq.table();
+        let evals = eq.to_evals();
 
-        for (index, &weight) in table.iter().enumerate() {
+        for (index, &weight) in evals.iter().enumerate() {
             assert_eq!(weight, eq.eval_index(index));
         }
+    }
+
+    #[test]
+    fn eq_behaves_like_its_dense_form() {
+        let eq = EqPoly::new(vec![F::from(3), F::from(5)]);
+        let dense = DenseMultilinearPoly::new(eq.to_evals(), 2);
+        let point = [F::from(11), F::from(13)];
+
+        assert_eq!(eq.eval(&point), dense.eval(&point));
     }
 
     #[test]
@@ -266,7 +290,7 @@ mod tests {
         let point = [F::from(11), F::from(13)];
 
         assert_eq!(dense.eval(&point), sparse.eval(&point));
-        assert_eq!(dense.to_evaluations(), sparse.to_evaluations());
+        assert_eq!(dense.to_evals(), sparse.to_evals());
     }
 
     #[test]

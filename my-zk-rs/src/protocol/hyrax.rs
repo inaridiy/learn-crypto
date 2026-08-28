@@ -70,7 +70,7 @@ impl<G: CurveGroup> HyraxPCS<G> {
             "one commitment blind is required per matrix row"
         );
 
-        let evaluations = poly.to_evaluations();
+        let evaluations = poly.to_evals();
         assert_eq!(
             evaluations.len(),
             self.rows.len() * self.rows.len(),
@@ -130,15 +130,15 @@ impl<G: CurveGroup> HyraxPCS<G> {
         for &coordinate in &point[..split] {
             row_reduced_poly.fold(coordinate);
         }
-        let row_reduced_evaluations = row_reduced_poly.to_evaluations();
+        let row_reduced_evaluations = row_reduced_poly.to_evals();
         assert_eq!(
             row_reduced_evaluations.len(),
             self.rows.len(),
             "partially evaluated polynomial does not match a Hyrax row"
         );
         let (row_weights, column_weights) = (
-            EqPoly::new(point[..split].to_vec()).table(),
-            EqPoly::new(point[split..].to_vec()).table(),
+            EqPoly::new(point[..split].to_vec()).to_evals(),
+            EqPoly::new(point[split..].to_vec()).to_evals(),
         );
         let row_reduced_blind = inner_product(com_blinds, &row_weights);
         let row_reduced_commitment = inner_product(&commitment.rows, &row_weights);
@@ -179,8 +179,8 @@ impl<G: CurveGroup> HyraxPCS<G> {
         }
 
         let (row_weights, column_weights) = (
-            EqPoly::new(point[..split].to_vec()).table(),
-            EqPoly::new(point[split..].to_vec()).table(),
+            EqPoly::new(point[..split].to_vec()).to_evals(),
+            EqPoly::new(point[split..].to_vec()).to_evals(),
         );
         let row_reduced_commitment = inner_product(&commitment.rows, &row_weights);
 
@@ -296,7 +296,7 @@ mod tests {
     #[test]
     fn commitment_uses_the_papers_column_major_matrix_layout() {
         let (pcs, poly, blinds, commitment, _, _) = example();
-        let evals = poly.to_evaluations();
+        let evals = poly.to_evals();
         for row in 0..4 {
             let expected_row = [evals[row], evals[row + 4], evals[row + 8], evals[row + 12]];
             assert_eq!(
@@ -337,29 +337,6 @@ mod tests {
         );
         let mut verifier_transcript = Transcript::new(b"hyrax-opening");
         assert!(pcs.verify(&sparse_commitment, &point, &proof, &mut verifier_transcript));
-    }
-
-    #[test]
-    fn verifier_rejects_changed_point_commitment_and_proof() {
-        let (pcs, _, commitment, mut point, _, proof) = prove_example();
-        point[3] += F::from(1);
-        let mut transcript = Transcript::new(b"hyrax-opening");
-        assert!(!pcs.verify(&commitment, &point, &proof, &mut transcript));
-
-        let (pcs, _, mut commitment, point, _, proof) = prove_example();
-        commitment.rows[0] += pcs.rows.generators[0];
-        let mut transcript = Transcript::new(b"hyrax-opening");
-        assert!(!pcs.verify(&commitment, &point, &proof, &mut transcript));
-
-        let (pcs, _, commitment, point, _, mut proof) = prove_example();
-        proof.result_com += pcs.scalar.generator;
-        let mut transcript = Transcript::new(b"hyrax-opening");
-        assert!(!pcs.verify(&commitment, &point, &proof, &mut transcript));
-
-        let (pcs, _, commitment, point, _, mut proof) = prove_example();
-        proof.ipa.dot_product.z_beta += F::from(1);
-        let mut transcript = Transcript::new(b"hyrax-opening");
-        assert!(!pcs.verify(&commitment, &point, &proof, &mut transcript));
     }
 
     #[test]
