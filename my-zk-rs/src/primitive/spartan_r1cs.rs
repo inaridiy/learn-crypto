@@ -40,12 +40,8 @@ impl<F: Field, M: Matrix<F>> From<&R1CS<F, M>> for SpartanR1CS<F, SparseMatrix<F
 
         let convert = |m: &M| {
             let mut entries = BTreeMap::new();
-            for row in 0..m.rows() {
-                for (col, value) in m.row(row).enumerate() {
-                    if !value.is_zero() {
-                        entries.insert((row, remap(col)), value);
-                    }
-                }
+            for (row, col, value) in m.nonzero_entries() {
+                entries.insert((row, remap(col)), value);
             }
             SparseMatrix::new(
                 entries,

@@ -16,6 +16,18 @@ pub trait Matrix<F: Field> {
 
     fn row(&self, row: usize) -> impl Iterator<Item = F>;
 
+    /// 非零成分を `(row, col, value)` の形で列挙する。
+    ///
+    /// dense な実装向けのデフォルト実装。疎行列は内部表現を直接走査することで、
+    /// 行列全体ではなく `nnz` に比例する実装へ上書きできる。
+    fn nonzero_entries(&self) -> impl Iterator<Item = (usize, usize, F)> {
+        (0..self.rows()).flat_map(move |row| {
+            self.row(row)
+                .enumerate()
+                .filter_map(move |(col, value)| (!value.is_zero()).then_some((row, col, value)))
+        })
+    }
+
     /// $M \vec{v}$。
     fn mul_vec(&self, vec: &[F]) -> Vec<F> {
         assert_eq!(
@@ -132,6 +144,12 @@ impl<F: Field> Matrix<F> for SparseMatrix<F> {
         (0..self.cols).map(move |col| self.get(row, col))
     }
 
+    fn nonzero_entries(&self) -> impl Iterator<Item = (usize, usize, F)> {
+        self.entries
+            .iter()
+            .map(|(&(row, col), &value)| (row, col, value))
+    }
+
     /// 非零成分だけを走る $O(\mathrm{nnz})$ 版。
     fn mul_vec(&self, vec: &[F]) -> Vec<F> {
         assert_eq!(
@@ -234,6 +252,10 @@ mod tests {
         assert_eq!(dense.mul_vec(&vec), sparse.mul_vec(&vec));
         assert_eq!(dense.vec_mul(&row_vec), sparse.vec_mul(&row_vec));
         assert_eq!(dense.eval_mle(&rx, &ry), sparse.eval_mle(&rx, &ry));
+        assert_eq!(
+            dense.nonzero_entries().collect::<Vec<_>>(),
+            sparse.nonzero_entries().collect::<Vec<_>>()
+        );
     }
 
     #[test]
