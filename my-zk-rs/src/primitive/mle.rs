@@ -89,12 +89,23 @@ impl<F: Field> EqPoly<F> {
 pub trait MultilinearPoly<F: Field> {
     fn vars(&self) -> usize;
 
-    /// Boolean hypercube 上の評価値を、`x_0` を最下位 bit とする順序で返す。
-    fn to_evals(&self) -> Vec<F>;
+    /// Boolean hypercube 上の点 `bits(index)` での値。
+    fn eval_index(&self, index: usize) -> F;
 
-    fn to_nonzero_evals(&self) -> impl Iterator<Item = F>;
+    /// 非零な評価値を `(index, value)` の形で列挙する。
+    fn nonzero_entries(&self) -> impl Iterator<Item = (usize, F)>;
+
+    /// 全評価値を並べた dense 表現に変換する。
+    fn to_dense(&self) -> DenseMultilinearPoly<F> {
+        let mut evals = vec![F::zero(); hypercube_size(self.vars())];
+        for (index, value) in self.nonzero_entries() {
+            evals[index] = value;
+        }
+        DenseMultilinearPoly::new(evals, self.vars())
+    }
 
     /// $\tilde{f}(\vec{r}) = \sum_i f(i) \cdot \mathrm{eq}(\vec{r}, \mathrm{bits}(i))$。
+    /// 非零成分だけを走る $O(\mathrm{nnz} \cdot n)$ 版。
     fn eval(&self, point: &[F]) -> F {
         assert_eq!(
             point.len(),
@@ -102,8 +113,11 @@ pub trait MultilinearPoly<F: Field> {
             "point dimension does not match polynomial"
         );
 
-        let weights = EqPoly::new(point.to_vec()).to_evals();
-        inner_product(&self.to_evals(), &weights)
+        let eq = EqPoly::new(point.to_vec());
+        self.nonzero_entries()
+            .fold(F::zero(), |acc, (index, value)| {
+                acc + value * eq.eval_index(index)
+            })
     }
 
     /// 最下位変数 `x_0` に `r` を代入し、変数を一つ減らす。
@@ -132,8 +146,23 @@ impl<F: Field> DenseMultilinearPoly<F> {
         Self { evals, vars }
     }
 
+    /// 長さから変数の数を導く。長さは 2 のべきでなければならない。
+    pub fn from_evals(evals: Vec<F>) -> Self {
+        assert!(
+            evals.len().is_power_of_two(),
+            "evaluation table length must be a power of two"
+        );
+        let vars = evals.len().ilog2() as usize;
+
+        Self { evals, vars }
+    }
+
     pub fn evals(&self) -> &[F] {
         &self.evals
+    }
+
+    pub fn into_evals(self) -> Vec<F> {
+        self.evals
     }
 
     pub fn to_sparse(&self) -> SparseMultilinearPoly<F> {
@@ -153,12 +182,31 @@ impl<F: Field> MultilinearPoly<F> for DenseMultilinearPoly<F> {
         self.vars
     }
 
-    fn to_evals(&self) -> Vec<F> {
-        self.evals.clone()
+    fn eval_index(&self, index: usize) -> F {
+        self.evals[index]
     }
 
-    fn to_nonzero_evals(&self) -> impl Iterator<Item = F> {
-        self.evals.iter().copied().filter(|value| !value.is_zero())
+    fn to_dense(&self) -> DenseMultilinearPoly<F> {
+        self.clone()
+    }
+
+    /// eq の評価表との内積で求める $O(2^n)$ 版。
+    fn eval(&self, point: &[F]) -> F {
+        assert_eq!(
+            point.len(),
+            self.vars,
+            "point dimension does not match polynomial"
+        );
+
+        inner_product(&self.evals, &EqPoly::new(point.to_vec()).to_evals())
+    }
+
+    fn nonzero_entries(&self) -> impl Iterator<Item = (usize, F)> {
+        self.evals
+            .iter()
+            .copied()
+            .enumerate()
+            .filter(|(_, value)| !value.is_zero())
     }
 
     fn fold(&mut self, r: F) {
@@ -202,10 +250,6 @@ impl<F: Field> SparseMultilinearPoly<F> {
     pub fn evals(&self) -> &BTreeMap<usize, F> {
         &self.evals
     }
-
-    pub fn to_dense(&self) -> DenseMultilinearPoly<F> {
-        DenseMultilinearPoly::new(self.to_evals(), self.vars)
-    }
 }
 
 impl<F: Field> MultilinearPoly<F> for SparseMultilinearPoly<F> {
@@ -213,31 +257,13 @@ impl<F: Field> MultilinearPoly<F> for SparseMultilinearPoly<F> {
         self.vars
     }
 
-    // ここ、Sparseじゃねぇよな。
-    fn to_evals(&self) -> Vec<F> {
-        let mut evals = vec![F::zero(); hypercube_size(self.vars)];
-        for (&index, &value) in &self.evals {
-            evals[index] = value;
-        }
-        evals
+    fn eval_index(&self, index: usize) -> F {
+        debug_assert!(index < hypercube_size(self.vars));
+        self.evals.get(&index).copied().unwrap_or_default()
     }
 
-    fn to_nonzero_evals(&self) -> impl Iterator<Item = F> {
-        self.evals.values().copied()
-    }
-
-    /// 非零成分だけを走る $O(\mathrm{nnz} \cdot n)$ 版。
-    fn eval(&self, point: &[F]) -> F {
-        assert_eq!(
-            point.len(),
-            self.vars,
-            "point dimension does not match polynomial"
-        );
-
-        let eq = EqPoly::new(point.to_vec());
-        self.evals.iter().fold(F::zero(), |acc, (&index, &value)| {
-            acc + value * eq.eval_index(index)
-        })
+    fn nonzero_entries(&self) -> impl Iterator<Item = (usize, F)> {
+        self.evals.iter().map(|(&index, &value)| (index, value))
     }
 
     fn fold(&mut self, r: F) {
@@ -290,7 +316,7 @@ mod tests {
         let point = [F::from(11), F::from(13)];
 
         assert_eq!(dense.eval(&point), sparse.eval(&point));
-        assert_eq!(dense.to_evals(), sparse.to_evals());
+        assert_eq!(dense, sparse.to_dense());
     }
 
     #[test]

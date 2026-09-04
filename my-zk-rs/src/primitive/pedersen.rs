@@ -1,6 +1,6 @@
 use ark_ec::{
-    AffineRepr, CurveGroup,
     hashing::{HashToCurve, HashToCurveError},
+    AffineRepr, CurveGroup,
 };
 
 #[derive(Clone, Debug)]

@@ -76,41 +76,10 @@ where
         .collect()
 }
 
-/// Column-major な行列の `row` 行目を列順に返す。
-pub fn column_major_row<T: Copy>(
-    entries: &[T],
-    rows: usize,
-    row: usize,
-) -> impl ExactSizeIterator<Item = T> + '_ {
-    assert!(rows > 0, "matrix must have at least one row");
-    assert!(row < rows, "row index is outside the matrix");
-    assert_eq!(
-        entries.len() % rows,
-        0,
-        "entry count must be divisible by the row count"
-    );
-
-    entries[row..].iter().step_by(rows).copied()
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{column_major_row, fold_halves, inner_product, lagrange_interpolation};
+    use super::{fold_halves, inner_product, lagrange_interpolation};
     use ark_bls12_381::Fr as F;
-
-    #[test]
-    fn extracts_a_row_from_column_major_entries() {
-        let entries = [0, 1, 2, 3, 4, 5];
-
-        assert_eq!(
-            column_major_row(&entries, 2, 0).collect::<Vec<_>>(),
-            [0, 2, 4]
-        );
-        assert_eq!(
-            column_major_row(&entries, 2, 1).collect::<Vec<_>>(),
-            [1, 3, 5]
-        );
-    }
 
     #[test]
     fn folds_halves_with_the_given_scales() {

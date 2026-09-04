@@ -1,32 +1,35 @@
 //! Hyrax の square-root multilinear polynomial commitment scheme。
 //!
-//! 評価表を column-major な正方行列 `T` と見なし、各行を Pedersen commit する。
+//! $n$ 変数の評価表を column-major な $2^{\lfloor n/2 \rfloor} \times 2^{\lceil n/2 \rceil}$
+//! 行列 `T` と見なし、各行を Pedersen commit する。$n$ が奇数なら列が行の 2 倍になる。
 //! 点 `r = (r_L, r_R)` での opening は、行 commitment を `eq(r_L)` で射影した後、
 //! `sigma::InnerProductProof` で `eq(r_R)` との内積関係を証明する。
 
+use crate::{
+    primitive::{
+        ColumnMajorMatrix, EqPoly, Matrix, MultilinearPoly, ScalarPedersen, Transcript,
+        VectorPedersen, inner_product,
+    },
+    protocol::sigma::InnerProductProof,
+};
 use ark_ec::{
     CurveGroup,
     hashing::{HashToCurve, HashToCurveError},
 };
+use ark_serialize::CanonicalSerialize;
 use ark_std::rand::{CryptoRng, Rng};
-
-use crate::{
-    primitive::{
-        EqPoly, MultilinearPoly, ScalarPedersen, Transcript, VectorPedersen, column_major_row,
-        inner_product,
-    },
-    protocol::sigma::InnerProductProof,
-};
 
 #[derive(Clone, Debug)]
 pub struct HyraxPCS<G: CurveGroup> {
-    /// `T` の一行を commit する multi-commitment key。
+    /// commit できる多項式の変数の数 $n$。
+    pub num_vars: usize,
+    /// `T` の一行(長さ $2^{\lceil n/2 \rceil}$)を commit する multi-commitment key。
     pub rows: VectorPedersen<G>,
     /// 評価値を commit する scalar commitment key。
     pub scalar: ScalarPedersen<G>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize)]
 pub struct HyraxPCSCommitment<G: CurveGroup> {
     pub rows: Vec<G>,
 }
@@ -39,24 +42,43 @@ pub struct HyraxPCSProof<G: CurveGroup> {
 }
 
 impl<G: CurveGroup> HyraxPCS<G> {
-    /// `square_size = 2^(num_vars/2)` 個の行・列を持つ square-root PCS を設定する。
+    /// `num_vars` 変数の多項式向けの PCS を設定する。
     ///
     /// 論文の commitment key と同じく、vector/scalar commitment は blind generator
     /// `h` を共有し、値側の generators だけを分離する。
     pub fn setup<H: HashToCurve<G>>(
         domain: &[u8],
-        square_size: usize,
+        num_vars: usize,
     ) -> Result<Self, HashToCurveError> {
-        assert!(
-            square_size.is_power_of_two(),
-            "Hyrax square size must be a non-zero power of two"
-        );
-
-        let rows = VectorPedersen::setup::<H>(domain, square_size)?;
+        let col_vars = num_vars - num_vars / 2;
+        let rows = VectorPedersen::setup::<H>(domain, 1 << col_vars)?;
         let scalar = ScalarPedersen::setup::<H>(domain)?;
         debug_assert_eq!(rows.blind, scalar.blind);
 
-        Ok(Self { rows, scalar })
+        Ok(Self {
+            num_vars,
+            rows,
+            scalar,
+        })
+    }
+
+    /// 行を選ぶ変数の数 $\lfloor n/2 \rfloor$。下位の変数が行、上位の変数が列を選ぶ。
+    fn row_vars(&self) -> usize {
+        self.num_vars / 2
+    }
+
+    /// `T` の行数 $2^{\lfloor n/2 \rfloor}$。commitment と blind の個数。
+    pub fn num_rows(&self) -> usize {
+        1 << self.row_vars()
+    }
+
+    /// 評価表を column-major な行列 `T` と見なす。
+    /// $\tilde{f}(r_L, r_R) = \mathrm{eq}(r_L)^\top T \, \mathrm{eq}(r_R)$。
+    fn evaluation_matrix<P>(&self, poly: &P) -> ColumnMajorMatrix<G::ScalarField>
+    where
+        P: MultilinearPoly<G::ScalarField> + ?Sized,
+    {
+        ColumnMajorMatrix::new(poly.to_dense().into_evals(), self.num_rows())
     }
 
     pub fn commit<P>(&self, poly: &P, com_blinds: &[G::ScalarField]) -> HyraxPCSCommitment<G>
@@ -66,30 +88,19 @@ impl<G: CurveGroup> HyraxPCS<G> {
         self.assert_poly_shape(poly);
         assert_eq!(
             com_blinds.len(),
-            self.rows.len(),
+            self.num_rows(),
             "one commitment blind is required per matrix row"
         );
 
-        let evaluations = poly.to_evals();
-        assert_eq!(
-            evaluations.len(),
-            self.rows.len() * self.rows.len(),
-            "polynomial evaluation table does not match the Hyrax matrix"
-        );
-        let rows = (0..self.rows.len())
+        let t = self.evaluation_matrix(poly);
+        let rows = (0..t.rows())
             .map(|row| {
-                let values =
-                    column_major_row(&evaluations, self.rows.len(), row).collect::<Vec<_>>();
-                self.rows.commit(&values, &com_blinds[row])
+                self.rows
+                    .commit(&t.row(row).collect::<Vec<_>>(), &com_blinds[row])
             })
             .collect();
 
         HyraxPCSCommitment { rows }
-    }
-
-    fn row_vars(&self) -> usize {
-        debug_assert!(self.rows.len().is_power_of_two());
-        self.rows.len().ilog2() as usize
     }
 
     fn append_statement(
@@ -98,7 +109,7 @@ impl<G: CurveGroup> HyraxPCS<G> {
         point: &[G::ScalarField],
         result_com: &G,
     ) {
-        transcript.append_usize(b"hyrax-square-size", commitment.rows.len());
+        transcript.append_usize(b"hyrax-num-rows", commitment.rows.len());
         for row in &commitment.rows {
             transcript.append_serializable(b"hyrax-row-commitment", row);
         }
@@ -121,25 +132,17 @@ impl<G: CurveGroup> HyraxPCS<G> {
         rng: &mut (impl Rng + CryptoRng),
     ) -> HyraxPCSProof<G>
     where
-        P: MultilinearPoly<G::ScalarField> + Clone,
+        P: MultilinearPoly<G::ScalarField> + ?Sized,
     {
         self.assert_opening_shape(commitment, poly, com_blinds, point);
 
         let split = self.row_vars();
-        let mut row_reduced_poly = poly.clone();
-        for &coordinate in &point[..split] {
-            row_reduced_poly.fold(coordinate);
-        }
-        let row_reduced_evaluations = row_reduced_poly.to_evals();
-        assert_eq!(
-            row_reduced_evaluations.len(),
-            self.rows.len(),
-            "partially evaluated polynomial does not match a Hyrax row"
-        );
         let (row_weights, column_weights) = (
             EqPoly::new(point[..split].to_vec()).to_evals(),
             EqPoly::new(point[split..].to_vec()).to_evals(),
         );
+        // 行を eq(r_L) で畳んだ eq(r_L)^T T。その後 eq(r_R) との内積が評価値になる。
+        let row_reduced_evaluations = self.evaluation_matrix(poly).vec_mul(&row_weights);
         let row_reduced_blind = inner_product(com_blinds, &row_weights);
         let row_reduced_commitment = inner_product(&commitment.rows, &row_weights);
         let result = inner_product(&row_reduced_evaluations, &column_weights);
@@ -171,8 +174,8 @@ impl<G: CurveGroup> HyraxPCS<G> {
         transcript: &mut Transcript,
     ) -> bool {
         let split = self.row_vars();
-        if commitment.rows.len() != self.rows.len()
-            || point.len() != 2 * split
+        if commitment.rows.len() != self.num_rows()
+            || point.len() != self.num_vars
             || self.rows.blind != self.scalar.blind
         {
             return false;
@@ -201,8 +204,8 @@ impl<G: CurveGroup> HyraxPCS<G> {
     {
         assert_eq!(
             poly.vars(),
-            2 * self.row_vars(),
-            "square Hyrax requires exactly 2*log2(square_size) variables"
+            self.num_vars,
+            "polynomial variable count does not match the PCS"
         );
     }
 
@@ -218,12 +221,12 @@ impl<G: CurveGroup> HyraxPCS<G> {
         self.assert_poly_shape(poly);
         assert_eq!(
             commitment.rows.len(),
-            self.rows.len(),
+            self.num_rows(),
             "commitment row count does not match the PCS"
         );
         assert_eq!(
             com_blinds.len(),
-            self.rows.len(),
+            self.num_rows(),
             "one commitment blind is required per matrix row"
         );
         assert_eq!(
@@ -296,7 +299,7 @@ mod tests {
     #[test]
     fn commitment_uses_the_papers_column_major_matrix_layout() {
         let (pcs, poly, blinds, commitment, _, _) = example();
-        let evals = poly.to_evals();
+        let evals = poly.evals();
         for row in 0..4 {
             let expected_row = [evals[row], evals[row + 4], evals[row + 8], evals[row + 12]];
             assert_eq!(
@@ -340,8 +343,41 @@ mod tests {
     }
 
     #[test]
+    fn odd_variable_count_uses_a_rectangular_matrix() {
+        // 3 変数: 行 2^1 = 2、列 2^2 = 4。
+        let pcs = HyraxPCS::setup::<G1Hasher>(b"hyrax-odd", 3).unwrap();
+        assert_eq!(pcs.num_rows(), 2);
+        assert_eq!(pcs.rows.len(), 4);
+
+        let poly = DenseMultilinearPoly::new((1..=8).map(F::from).collect(), 3);
+        let blinds = [3, 5].map(F::from).to_vec();
+        let commitment = pcs.commit(&poly, &blinds);
+        assert_eq!(commitment.rows.len(), 2);
+
+        let point = [2, 3, 5].map(F::from).to_vec();
+        let result_blind = F::from(13);
+        let mut prover_transcript = Transcript::new(b"hyrax-opening");
+        let proof = pcs.open(
+            &commitment,
+            &poly,
+            &blinds,
+            &point,
+            &result_blind,
+            &mut prover_transcript,
+            &mut test_rng(),
+        );
+        assert_eq!(
+            proof.result_com,
+            pcs.scalar.commit(&poly.eval(&point), &result_blind)
+        );
+
+        let mut verifier_transcript = Transcript::new(b"hyrax-opening");
+        assert!(pcs.verify(&commitment, &point, &proof, &mut verifier_transcript));
+    }
+
+    #[test]
     fn zero_variable_polynomial_uses_the_length_one_ipa_base_case() {
-        let pcs = HyraxPCS::setup::<G1Hasher>(b"hyrax-constant", 1).unwrap();
+        let pcs = HyraxPCS::setup::<G1Hasher>(b"hyrax-constant", 0).unwrap();
         let poly = DenseMultilinearPoly::new(vec![F::from(42)], 0);
         let blinds = [F::from(7)];
         let commitment = pcs.commit(&poly, &blinds);

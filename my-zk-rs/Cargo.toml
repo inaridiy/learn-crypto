@@ -7,13 +7,17 @@ edition = "2024"
 ark-bls12-381 = "0.6.0"
 ark-ec = "0.6.0"
 ark-ff = "0.6.0"
-ark-serialize = "0.6.0"
+ark-serialize = { version = "0.6.0", features = ["derive"] }
 ark-std = "0.6.0"
 ark-test-curves = "0.6.0"
 num-bigint = "0.4.6"
 num-traits = "0.2.19"
 sha2 = "0.10.9"
 zeroize = "1.8.2"
+
+[lints.clippy]
+# 添字を値としても使う数式的なループが多いので、range loop を許可する。
+needless_range_loop = "allow"
 
 [features]
 ark-asm = ["ark-ff/asm"]
