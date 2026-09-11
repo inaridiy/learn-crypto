@@ -1,5 +1,6 @@
 pub mod hyrax;
 pub mod sigma;
+pub mod spartan_ccs_nark;
 pub mod spartan_nark;
 pub mod spartan_nizk;
 pub mod sumcheck;
